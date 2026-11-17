@@ -1,0 +1,3828 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Ordhelten – Norsk Lesespill & Minecraft-oppdrag</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ==========================================================================
+       IPAD & TOUCH-OPTIMALISERING (Hindrer dobbeltklikk-zoom og tekstmarkering)
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #e0f2fe 0%, #fef9c3 50%, #dcfce7 100%);
+    }
+
+    button, label, .touch-tile {
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+
+    /* Tydelig lesefont uten forvirrende seriffer */
+    .reading-font {
+      font-family: "Verdana", "Trebuchet MS", -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: 0.04em;
+    }
+
+    /* 3D-knappefølelse for barnefingre */
+    .btn-3d {
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+    }
+    .btn-3d:active:not(:disabled) {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    .tile-3d {
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease;
+      box-shadow: 0 5px 0 #cbd5e1, 0 8px 15px rgba(0,0,0,0.08);
+    }
+    .tile-3d:active:not(:disabled) {
+      transform: translateY(4px) scale(0.97);
+      box-shadow: 0 1px 0 #cbd5e1;
+    }
+
+    /* Animasjoner for tilbakemelding og egg-klekking */
+    @keyframes shakeGentle {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px) rotate(-2deg); }
+      40% { transform: translateX(8px) rotate(2deg); }
+      60% { transform: translateX(-6px) rotate(-1deg); }
+      80% { transform: translateX(6px) rotate(1deg); }
+    }
+    .animate-shake {
+      animation: shakeGentle 0.45s ease-in-out;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.6); opacity: 0; }
+      70% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes eggWobble {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      20% { transform: rotate(-12deg) scale(1.05); }
+      40% { transform: rotate(12deg) scale(1.08); }
+      60% { transform: rotate(-10deg) scale(1.05); }
+      80% { transform: rotate(10deg) scale(1.05); }
+    }
+    .animate-egg {
+      animation: eggWobble 0.9s infinite ease-in-out;
+    }
+
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-7px); }
+    }
+    .animate-float {
+      animation: floatSlow 2.6s infinite ease-in-out;
+    }
+
+    /* Tilpasset scrollbar kun for Samlealbum og Troférom */
+    .scroll-area {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .scroll-area::-webkit-scrollbar {
+      width: 8px;
+    }
+    .scroll-area::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.5);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="flex flex-col h-[100dvh] w-full select-none text-slate-800">
+
+  <!-- KONFETTI-CANVAS FOR FEIRING -->
+  <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50 w-full h-full"></canvas>
+
+  <!-- ==========================================================================
+       TOPPMENY (Alltid synlig: Startmeny, Stjerner, Egg-måler, Minispill, ABC/abc, ⚙️)
+       ========================================================================== -->
+  <header class="w-full bg-white/90 backdrop-blur-md border-b-4 border-sky-200 px-2.5 py-2 sm:px-5 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 z-30 shrink-0 shadow-sm">
+    <!-- Venstre: Startmeny-knapp + Løype-knapp og aktivt nivå -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <button onclick="showView('portal')" class="btn-3d bg-slate-800 hover:bg-slate-900 text-white font-black px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl flex items-center gap-1.5 text-xs sm:text-sm">
+        <span>🚀</span>
+        <span>Startmeny</span>
+      </button>
+
+      <button id="btn-home" onclick="showView('home')" class="hidden btn-3d bg-sky-500 hover:bg-sky-600 text-white font-black px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl flex items-center gap-1.5 text-xs sm:text-sm">
+        <span>🦸‍♂️</span>
+        <span>Løyper</span>
+      </button>
+
+      <div id="active-level-badge" class="hidden items-center gap-1 bg-sky-100 text-sky-900 font-extrabold px-2.5 py-1 rounded-xl text-xs sm:text-sm border-2 border-sky-200">
+        <span id="badge-level-icon">🌱</span>
+        <span id="badge-level-text">Nivå 1</span>
+      </div>
+    </div>
+
+    <!-- Midten: Stjerner, Egg-progresjon (5) og Minispill-progresjon (10) -->
+    <div class="flex items-center gap-2 sm:gap-3 bg-slate-100/90 px-2.5 py-1 rounded-2xl border-2 border-slate-200">
+      <div class="flex items-center gap-1 font-black text-amber-600 text-xs sm:text-sm" title="Stjerner">
+        <span class="text-base sm:text-lg">⭐</span>
+        <span id="stat-stars">0</span>
+      </div>
+
+      <!-- Egg-måler (hver 5. stjerne) -->
+      <div class="flex items-center gap-1.5" title="Nytt monster-egg hver 5. stjerne">
+        <span class="text-sm sm:text-base">🥚</span>
+        <div class="w-10 sm:w-14 h-2.5 bg-purple-200 rounded-full overflow-hidden">
+          <div id="bar-egg" class="h-full bg-purple-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <span id="stat-egg-progress" class="text-[11px] font-black text-purple-900">0/5</span>
+      </div>
+
+      <!-- Minispill-måler (hver 10. stjerne) -->
+      <div class="hidden sm:flex items-center gap-1.5" title="Minispill hver 10. stjerne">
+        <span class="text-sm sm:text-base">🕹️</span>
+        <div class="w-12 h-2.5 bg-emerald-200 rounded-full overflow-hidden">
+          <div id="bar-mc" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <span id="stat-mc-progress" class="text-[11px] font-black text-emerald-900">0/10</span>
+      </div>
+    </div>
+
+    <!-- Høyre: Snarveier til Minispill, Album, Troférom, ABC/abc og Innstillinger -->
+    <div class="flex items-center gap-1.5">
+      <button onclick="openMinigameModal()" class="btn-3d bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1" title="Spill minispill">
+        <span>🕹️</span>
+        <span class="hidden md:inline">Minispill</span>
+      </button>
+
+      <button onclick="showView('album')" class="btn-3d bg-purple-100 hover:bg-purple-200 text-purple-900 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 border border-purple-300" title="Samlealbum">
+        <span>🐾</span>
+        <span id="badge-album-count">0/12</span>
+      </button>
+
+      <button onclick="showView('trophies')" class="btn-3d bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 border border-emerald-300" title="Minecraft-oppdrag">
+        <span>⛏️</span>
+        <span id="badge-trophy-count" class="hidden sm:inline">12</span>
+      </button>
+
+      <button id="btn-case-toggle" onclick="toggleLetterCase()" class="btn-3d bg-indigo-600 hover:bg-indigo-700 text-white font-black px-2.5 py-1.5 rounded-xl text-xs reading-font" title="Bytt mellom STORE og små bokstaver">
+        ABC
+      </button>
+
+      <button onclick="openTeacherModal()" class="btn-3d bg-slate-200 hover:bg-slate-300 text-slate-700 font-black px-2.5 py-1.5 rounded-xl text-xs" title="Innstillinger og lærerhjørne">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       HOVEDOMRÅDE (Bytter mellom Startmeny/Portal, Løypevelgere, Spill og Verktøy)
+       ========================================================================== -->
+  <main class="flex-1 w-full max-w-5xl mx-auto px-3 py-2 sm:px-6 sm:py-3 flex flex-col overflow-hidden relative">
+
+    <!-- 0. STARTMENY / PORTAL (Bil-dashbord-layout: Brede rader over hverandre + Tittel & kreditering øverst) -->
+    <section id="view-portal" class="flex-1 flex flex-col justify-between py-1 sm:py-2 overflow-y-auto scroll-area gap-2.5 sm:gap-3">
+      <!-- Topplinje: Hovedtittel ("Lesetrening"), kreditering og Lærerinfo-knapp -->
+      <div class="bg-white/90 rounded-3xl px-4 py-2.5 sm:px-5 sm:py-3 border-2 border-sky-200 shadow-sm flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl sm:text-3xl">🇳🇴</span>
+            <h1 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+              Lesetrening
+            </h1>
+            <span class="bg-sky-100 text-sky-800 font-extrabold px-2.5 py-0.5 rounded-full text-[11px] uppercase tracking-wider border border-sky-200">
+              Prototype
+            </span>
+          </div>
+          <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mt-0.5">
+            Konsept, metodikk og pedagogiske valg ved <strong class="text-slate-700">Håvard Haugen</strong> • Utviklet og kodet i samarbeid med <strong class="text-slate-700">Gemini 4 Pro</strong>
+          </p>
+        </div>
+
+        <button onclick="openPedagogyModal('overview')" class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-300 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm flex items-center gap-1.5 shadow-sm shrink-0">
+          <span>👩‍🏫</span>
+          <span>Om programmene (Lærerinfo)</span>
+        </button>
+      </div>
+
+      <!-- HOVEDDEL: 3 BREDE PROGRAMRADER OVER HVERANDRE (Android Auto / Dashbord-stil) -->
+      <div class="flex flex-col gap-2.5 sm:gap-3.5 my-auto w-full">
+        <!-- PROGRAM 1: ORDHELTEN -->
+        <div class="flex flex-col gap-1">
+          <button onclick="showView('home')" class="btn-3d w-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white rounded-3xl px-5 py-3.5 sm:px-7 sm:py-5 border-4 border-white shadow-lg flex items-center justify-between gap-4 text-left">
+            <div class="flex items-center gap-4 sm:gap-5">
+              <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-4xl sm:text-5xl shrink-0 shadow-inner">
+                🦸‍♂️
+              </div>
+              <div>
+                <div class="text-xl sm:text-3xl font-black tracking-wide leading-tight">Ordhelten</div>
+                <div class="text-xs sm:text-sm font-bold text-sky-100 mt-0.5">Les og bygg ord i 3 løyper</div>
+              </div>
+            </div>
+            <span class="bg-amber-300 text-slate-900 font-black px-4 py-2 sm:px-6 sm:py-2.5 rounded-2xl text-xs sm:text-base shadow-sm shrink-0">
+              Velg løype ▶
+            </span>
+          </button>
+          <div class="flex items-center justify-between px-3">
+            <span class="text-[11px] sm:text-xs font-bold text-slate-600">
+              Trener lydrett avkoding, minimalpar (dobbel konsonant) og sammensatte grafemer
+            </span>
+            <button onclick="openPedagogyModal('ordhelten')" class="text-[11px] sm:text-xs font-extrabold text-sky-700 hover:underline flex items-center gap-1 shrink-0">
+              <span>ℹ️</span> Lærerinfo
+            </button>
+          </div>
+        </div>
+
+        <!-- PROGRAM 2: LYDBOKA -->
+        <div class="flex flex-col gap-1">
+          <button onclick="showView('writerHub')" class="btn-3d w-full bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-700 text-white rounded-3xl px-5 py-3.5 sm:px-7 sm:py-5 border-4 border-white shadow-lg flex items-center justify-between gap-4 text-left">
+            <div class="flex items-center gap-4 sm:gap-5">
+              <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-4xl sm:text-5xl shrink-0 shadow-inner">
+                📖
+              </div>
+              <div>
+                <div class="text-xl sm:text-3xl font-black tracking-wide leading-tight">LydBoka</div>
+                <div class="text-xs sm:text-sm font-bold text-emerald-100 mt-0.5">Skriveverksted med talestøtte</div>
+              </div>
+            </div>
+            <span class="bg-white text-teal-950 font-black px-4 py-2 sm:px-6 sm:py-2.5 rounded-2xl text-xs sm:text-base shadow-sm shrink-0">
+              Velg løype ▶
+            </span>
+          </button>
+          <div class="flex items-center justify-between px-3">
+            <span class="text-[11px] sm:text-xs font-bold text-slate-600">
+              Leser ord høyt ved mellomrom og hele setninger ved punktum
+            </span>
+            <button onclick="openPedagogyModal('lydboka')" class="text-[11px] sm:text-xs font-extrabold text-teal-700 hover:underline flex items-center gap-1 shrink-0">
+              <span>ℹ️</span> Lærerinfo
+            </button>
+          </div>
+        </div>
+
+        <!-- PROGRAM 3: ORDJAKTEN -->
+        <div class="flex flex-col gap-1">
+          <button onclick="showView('graphoHub')" class="btn-3d w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-700 text-white rounded-3xl px-5 py-3.5 sm:px-7 sm:py-5 border-4 border-white shadow-lg flex items-center justify-between gap-4 text-left">
+            <div class="flex items-center gap-4 sm:gap-5">
+              <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-4xl sm:text-5xl shrink-0 shadow-inner">
+                🎧
+              </div>
+              <div>
+                <div class="text-xl sm:text-3xl font-black tracking-wide leading-tight">OrdJakten</div>
+                <div class="text-xs sm:text-sm font-bold text-purple-100 mt-0.5">Førstebokstav og hurtigavkoding</div>
+              </div>
+            </div>
+            <span class="bg-white text-indigo-950 font-black px-4 py-2 sm:px-6 sm:py-2.5 rounded-2xl text-xs sm:text-base shadow-sm shrink-0">
+              Velg løype ▶
+            </span>
+          </button>
+          <div class="flex items-center justify-between px-3">
+            <span class="text-[11px] sm:text-xs font-bold text-slate-600">
+              Mengdetrening i 4 etapper med umiddelbar visuell korrigering
+            </span>
+            <button onclick="openPedagogyModal('ordjakten')" class="text-[11px] sm:text-xs font-extrabold text-indigo-700 hover:underline flex items-center gap-1 shrink-0">
+              <span>ℹ️</span> Lærerinfo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOMPAKT BUNNPANEL FOR SAMLINGER, MINECRAFT OG INNSTILLINGER -->
+      <div class="bg-white/90 rounded-3xl p-2.5 sm:p-3 border-4 border-slate-200 shadow-sm shrink-0">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <button onclick="showView('trophies')" class="btn-3d bg-teal-50 hover:bg-teal-100 border-2 border-teal-300 rounded-2xl p-2.5 flex items-center justify-center gap-2">
+            <span class="text-2xl">⛏️</span>
+            <span class="font-black text-teal-950 text-xs sm:text-sm">Minecraft</span>
+          </button>
+
+          <button onclick="showView('album')" class="btn-3d bg-purple-50 hover:bg-purple-100 border-2 border-purple-300 rounded-2xl p-2.5 flex items-center justify-center gap-2">
+            <span class="text-2xl">🐾</span>
+            <span class="font-black text-purple-950 text-xs sm:text-sm">Album</span>
+          </button>
+
+          <button onclick="toggleLetterCase()" class="btn-3d bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-300 rounded-2xl p-2.5 flex items-center justify-center gap-2">
+            <span class="text-2xl">🔤</span>
+            <span id="portal-case-label" class="font-black text-indigo-950 text-xs sm:text-sm">ABC</span>
+          </button>
+
+          <button onclick="openTeacherModal()" class="btn-3d bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 rounded-2xl p-2.5 flex items-center justify-center gap-2">
+            <span class="text-2xl">⚙️</span>
+            <span class="font-black text-amber-950 text-xs sm:text-sm">Innstillinger</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. ORDHELTEN – LØYPEVELGER (Ren visning: Velg løype før start + Lærerinfo-knapp) -->
+    <section id="view-home" class="hidden flex-1 flex flex-col justify-between py-2 sm:py-4 overflow-y-auto scroll-area gap-4">
+      <!-- Topplinje -->
+      <div class="flex items-center justify-between gap-2 px-1">
+        <div class="flex items-center gap-2.5">
+          <span class="text-3xl">🦸‍♂️</span>
+          <h1 class="text-xl sm:text-3xl font-black text-slate-800">Ordhelten – Velg løype</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openPedagogyModal('ordhelten')" class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-300 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm flex items-center gap-1.5">
+            <span>👩‍🏫</span>
+            <span>Om løypene</span>
+          </button>
+          <button onclick="showView('portal')" class="btn-3d bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm">
+            ⬅ Tilbake
+          </button>
+        </div>
+      </div>
+
+      <!-- 3 Rene Løypekort -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 my-auto">
+        <!-- LØYPE 1 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="startLevel(1)" class="btn-3d bg-gradient-to-b from-emerald-400 to-emerald-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-3 min-h-[180px] sm:min-h-[210px] w-full">
+            <span class="text-5xl sm:text-6xl">🌱</span>
+            <span class="text-2xl sm:text-3xl font-black">Løype 1</span>
+            <div class="flex gap-1.5 mt-1">
+              <span class="bg-white/90 text-emerald-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">SOL</span>
+              <span class="bg-white/90 text-emerald-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">BIL</span>
+              <span class="bg-white/90 text-emerald-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">HUS</span>
+            </div>
+          </button>
+          <p class="text-center text-xs sm:text-sm font-bold text-slate-600">Lydrette småord (2–4 bokstaver)</p>
+        </div>
+
+        <!-- LØYPE 2 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="startLevel(2)" class="btn-3d bg-gradient-to-b from-amber-400 to-orange-500 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-3 min-h-[180px] sm:min-h-[210px] w-full">
+            <span class="text-5xl sm:text-6xl">🚀</span>
+            <span class="text-2xl sm:text-3xl font-black">Løype 2</span>
+            <div class="flex gap-1.5 mt-1">
+              <span class="bg-white/90 text-orange-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">BAKE</span>
+              <span class="bg-white/90 text-orange-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">BAKKE</span>
+            </div>
+          </button>
+          <p class="text-center text-xs sm:text-sm font-bold text-slate-600">Minimalpar og dobbel konsonant</p>
+        </div>
+
+        <!-- LØYPE 3 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="startLevel(3)" class="btn-3d bg-gradient-to-b from-purple-500 to-indigo-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-3 min-h-[180px] sm:min-h-[210px] w-full">
+            <span class="text-5xl sm:text-6xl">👑</span>
+            <span class="text-2xl sm:text-3xl font-black">Løype 3</span>
+            <div class="flex gap-1.5 mt-1">
+              <span class="bg-white/90 text-indigo-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">KJOLE</span>
+              <span class="bg-white/90 text-indigo-900 font-black px-3 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">SKJOLD</span>
+            </div>
+          </button>
+          <p class="text-center text-xs sm:text-sm font-bold text-slate-600">Sammensatte grafemer (KJ, SKJ, SJ, HJ)</p>
+        </div>
+      </div>
+
+      <!-- Enkelt bunnvalg for oppgavetype -->
+      <div class="bg-white/90 rounded-2xl p-2.5 sm:p-3 border-2 border-sky-200 flex flex-wrap items-center justify-center gap-2">
+        <span class="text-xs sm:text-sm font-black text-slate-600 mr-1">🎮 Oppgavetype:</span>
+        <div class="inline-flex bg-slate-200 p-1 rounded-xl gap-1">
+          <button id="mode-mixed" onclick="setTaskMode('mixed')" class="px-3 py-1.5 rounded-lg font-extrabold text-xs sm:text-sm bg-white text-sky-700 shadow-sm">
+            🔄 Begge
+          </button>
+          <button id="mode-word2pic" onclick="setTaskMode('word2pic')" class="px-3 py-1.5 rounded-lg font-extrabold text-xs sm:text-sm text-slate-600">
+            🖼️ Les ord
+          </button>
+          <button id="mode-build" onclick="setTaskMode('build')" class="px-3 py-1.5 rounded-lg font-extrabold text-xs sm:text-sm text-slate-600">
+            🔤 Bygg ord
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1B. LYDBOKA – LØYPEVELGER FØR START -->
+    <section id="view-writerHub" class="hidden flex-1 flex flex-col justify-between py-2 sm:py-4 overflow-y-auto scroll-area gap-4">
+      <div class="flex items-center justify-between gap-2 px-1">
+        <div class="flex items-center gap-2.5">
+          <span class="text-3xl">📖</span>
+          <h1 class="text-xl sm:text-3xl font-black text-slate-800">LydBoka – Velg løype</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openPedagogyModal('lydboka')" class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-300 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm flex items-center gap-1.5">
+            <span>👩‍🏫</span>
+            <span>Om løypene</span>
+          </button>
+          <button onclick="showView('portal')" class="btn-3d bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm">
+            ⬅ Tilbake
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 my-auto">
+        <!-- Løype 1: Bilde + Ord -->
+        <div class="flex flex-col gap-2">
+          <button onclick="startWriterTrack(1)" class="btn-3d bg-gradient-to-b from-emerald-400 to-teal-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-3 min-h-[180px] sm:min-h-[210px] w-full">
+            <span class="text-5xl sm:text-6xl">🐱</span>
+            <span class="text-2xl sm:text-3xl font-black">Løype 1: Enkeltord</span>
+            <span class="bg-white/90 text-teal-900 font-black px-3.5 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">SOL • BIL • KATT</span>
+          </button>
+          <p class="text-center text-xs sm:text-sm font-bold text-slate-600">Velg bilde og skriv enkeltord med talestøtte</p>
+        </div>
+
+        <!-- Løype 2: Setningsstartere -->
+        <div class="flex flex-col gap-2">
+          <button onclick="startWriterTrack(2)" class="btn-3d bg-gradient-to-b from-sky-400 to-blue-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-3 min-h-[180px] sm:min-h-[210px] w-full">
+            <span class="text-5xl sm:text-6xl">✍️</span>
+            <span class="text-2xl sm:text-3xl font-black">Løype 2: Setninger</span>
+            <span class="bg-white/90 text-blue-900 font-black px-3.5 py-1 rounded-xl text-xs sm:text-sm reading-font case-dynamic">JEG SER EN ...</span>
+          </button>
+          <p class="text-center text-xs sm:text-sm font-bold text-slate-600">Fullfør enkle setninger med ferdig start</p>
+        </div>
+
+        <!-- Løype 3: Fri fortelling -->
+        <div class="flex flex-col gap-2">
+          <button onclick="startWriterTrack(3)" class="btn-3d bg-gradient-to-b from-purple-500 to-indigo-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-3 min-h-[180px] sm:min-h-[210px] w-full">
+            <span class="text-5xl sm:text-6xl">📚</span>
+            <span class="text-2xl sm:text-3xl font-black">Løype 3: Min bok</span>
+            <span class="bg-white/90 text-indigo-900 font-black px-3.5 py-1 rounded-xl text-xs sm:text-sm">Flere sider</span>
+          </button>
+          <p class="text-center text-xs sm:text-sm font-bold text-slate-600">Skriv egne fortellinger og bøker fritt</p>
+        </div>
+      </div>
+
+      <div></div>
+    </section>
+
+    <!-- 1C. ORDJAKTEN – LØYPEVELGER FØR START -->
+    <section id="view-graphoHub" class="hidden flex-1 flex flex-col justify-between py-2 sm:py-4 overflow-y-auto scroll-area gap-4">
+      <div class="flex items-center justify-between gap-2 px-1">
+        <div class="flex items-center gap-2.5">
+          <span class="text-3xl">🎧</span>
+          <h1 class="text-xl sm:text-3xl font-black text-slate-800">OrdJakten – Velg løype</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openGraphoStageModal()" class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-300 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm flex items-center gap-1.5">
+            <span>👩‍🏫</span>
+            <span>Om løypene</span>
+          </button>
+          <button onclick="showView('portal')" class="btn-3d bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold px-3.5 py-2 rounded-2xl text-xs sm:text-sm">
+            ⬅ Tilbake
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-auto">
+        <!-- Løype 1 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="launchGraphoFromHub(1)" class="btn-3d bg-gradient-to-b from-sky-400 to-blue-600 text-white rounded-3xl p-5 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-2.5 min-h-[175px] w-full">
+            <span class="text-5xl">🖼️</span>
+            <span class="text-xl sm:text-2xl font-black">Løype 1</span>
+            <span class="bg-white/90 text-blue-900 font-black px-3 py-1 rounded-xl text-xs reading-font case-dynamic">☀️ _ O L</span>
+          </button>
+          <p class="text-center text-xs font-bold text-slate-600">Førstebokstav (uten lyd)</p>
+        </div>
+
+        <!-- Løype 2 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="launchGraphoFromHub(2)" class="btn-3d bg-gradient-to-b from-emerald-400 to-teal-600 text-white rounded-3xl p-5 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-2.5 min-h-[175px] w-full">
+            <span class="text-5xl">🌱</span>
+            <span class="text-xl sm:text-2xl font-black">Løype 2</span>
+            <span class="bg-white/90 text-teal-900 font-black px-3 py-1 rounded-xl text-xs reading-font case-dynamic">SOL • BIL</span>
+          </button>
+          <p class="text-center text-xs font-bold text-slate-600">Korte lydrette ord</p>
+        </div>
+
+        <!-- Løype 3 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="launchGraphoFromHub(3)" class="btn-3d bg-gradient-to-b from-amber-400 to-orange-500 text-white rounded-3xl p-5 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-2.5 min-h-[175px] w-full">
+            <span class="text-5xl">🚀</span>
+            <span class="text-xl sm:text-2xl font-black">Løype 3</span>
+            <span class="bg-white/90 text-orange-900 font-black px-3 py-1 rounded-xl text-xs reading-font case-dynamic">TAK / TAKK</span>
+          </button>
+          <p class="text-center text-xs font-bold text-slate-600">Minimalpar & dobbel konsonant</p>
+        </div>
+
+        <!-- Løype 4 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="launchGraphoFromHub(4)" class="btn-3d bg-gradient-to-b from-purple-500 to-indigo-700 text-white rounded-3xl p-5 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-2.5 min-h-[175px] w-full">
+            <span class="text-5xl">👑</span>
+            <span class="text-xl sm:text-2xl font-black">Løype 4</span>
+            <span class="bg-white/90 text-indigo-900 font-black px-3 py-1 rounded-xl text-xs reading-font case-dynamic">KJOLE • SKJOLD</span>
+          </button>
+          <p class="text-center text-xs font-bold text-slate-600">KJ / SKJ / SJ / NG</p>
+        </div>
+      </div>
+
+      <div></div>
+    </section>
+
+    <!-- ==========================================================================
+         2. SPILLBRETT (Helt rent for tekststøy – kun oppgave, lydikon og brikker)
+         ========================================================================== -->
+    <section id="view-game" class="hidden flex-1 flex flex-col justify-between h-full overflow-hidden py-1">
+      <!-- Rent toppfelt med kun ikoner -->
+      <div class="flex items-center justify-between gap-2 px-2 py-1 shrink-0 min-h-[48px]">
+        <div class="flex items-center gap-2">
+          <span id="game-task-badge" class="bg-white/90 border-2 border-sky-200 text-2xl px-3 py-1 rounded-2xl shadow-sm">
+            🖼️
+          </span>
+          <span id="game-retry-badge" class="hidden bg-amber-100 border-2 border-amber-300 text-xl px-3 py-1 rounded-2xl shadow-sm" title="Vi øver en gang til">
+            🔁
+          </span>
+        </div>
+
+        <div id="top-audio-controls" class="flex items-center gap-2">
+          <button id="btn-top-speak" onclick="speakCurrentWord(false)" class="btn-3d bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-4 py-2 rounded-2xl flex items-center justify-center text-2xl shadow-md" title="Hør ordet">
+            🔊
+          </button>
+          <button id="btn-top-hint" onclick="speakCurrentHint()" class="btn-3d bg-sky-100 hover:bg-sky-200 text-sky-900 font-bold px-3.5 py-2 rounded-2xl text-xl flex items-center justify-center border-2 border-sky-200" title="Hør forklaring">
+            💡
+          </button>
+        </div>
+      </div>
+
+      <!-- OPPGAVETYPE A: ORD-TIL-BILDE (Kun målordet + 3 bilder) -->
+      <div id="arena-word2pic" class="hidden flex-1 flex flex-col justify-evenly items-center my-2">
+        <!-- Målord-kort uten instruksjonstekst -->
+        <div class="w-full max-w-xl bg-white rounded-3xl border-4 border-sky-300 shadow-lg p-6 sm:p-10 text-center relative flex items-center justify-center min-h-[140px] sm:min-h-[180px]">
+          <!-- Liten høyttaler som aktiveres etter 10 sekunder med skjult nedtelling -->
+          <button id="w2p-delayed-speaker" onclick="speakCurrentWord(false)" class="hidden animate-pop btn-3d absolute top-3 right-3 sm:top-4 sm:right-4 bg-amber-400 hover:bg-amber-500 text-slate-900 font-extrabold p-3 rounded-2xl text-2xl shadow-md" title="Hør ordet">
+            🔊
+          </button>
+
+          <div id="w2p-target-word" onclick="handleWordCardClick()" class="reading-font text-5xl sm:text-7xl md:text-8xl font-black text-slate-800 tracking-widest transition-colors">
+            SOL
+          </div>
+        </div>
+
+        <!-- 3 Bilde/Emoji-alternativer -->
+        <div id="w2p-options" class="grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-3xl px-1">
+          <!-- Fylles dynamisk av JS -->
+        </div>
+      </div>
+
+      <!-- OPPGAVETYPE B: BYGG ORDET (Kun bilde + bokstavfelt + brikker) -->
+      <div id="arena-build" class="hidden flex-1 flex flex-col justify-evenly items-center my-1">
+        <!-- Bilde-kort helt uten tekststøy -->
+        <div onclick="speakCurrentWord(false)" class="bg-white rounded-3xl border-4 border-purple-300 shadow-md px-10 py-5 sm:px-14 sm:py-6 flex items-center justify-center gap-4 cursor-pointer active:scale-95 transition-transform">
+          <div id="build-emoji" class="text-7xl sm:text-8xl md:text-9xl leading-none">
+            ☀️
+          </div>
+        </div>
+
+        <!-- Svarfelt (Bokstav-luker) + Tøm-ikon -->
+        <div class="flex items-center justify-center gap-2 sm:gap-3 flex-wrap my-1">
+          <div id="build-slots" class="flex items-center justify-center gap-1.5 sm:gap-2.5 flex-wrap">
+            <!-- Fylles dynamisk -->
+          </div>
+          <button id="btn-clear-slots" onclick="clearPlacedLetters()" class="btn-3d bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold p-3 sm:p-4 rounded-2xl text-xl sm:text-2xl ml-1" title="Tøm">
+            🔄
+          </button>
+        </div>
+
+        <!-- Bokstavbrikker (Inkludert 2-3 smarte distraktorer) -->
+        <div id="build-tiles" class="flex items-center justify-center gap-2 sm:gap-3 flex-wrap max-w-2xl px-2">
+          <!-- Fylles dynamisk -->
+        </div>
+      </div>
+
+      <!-- Nederste visuelle statuslinje (Kun ikoner, ingen lesetekst) -->
+      <div id="feedback-bar" class="h-12 rounded-2xl bg-white/70 border-2 border-slate-200 px-4 flex items-center justify-center gap-3 shrink-0 transition-all">
+        <span id="feedback-icon" class="text-2xl sm:text-3xl">⭐</span>
+        <span id="feedback-message" class="font-black text-slate-700 text-lg sm:text-xl tracking-wider"></span>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         3. SAMLEALBUM (PokéMath-inspirerte SVG-lesemonstre)
+         ========================================================================== -->
+    <section id="view-album" class="hidden flex-1 flex flex-col overflow-hidden">
+      <div class="bg-white/90 rounded-3xl p-4 sm:p-5 border-4 border-purple-200 shadow-md flex-1 flex flex-col overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-purple-100 shrink-0">
+          <h2 class="text-xl sm:text-2xl font-black text-purple-900 flex items-center gap-2">
+            <span>🐾</span> Album
+          </h2>
+          <button onclick="showView('gameOrHome')" class="btn-3d bg-sky-500 hover:bg-sky-600 text-white font-extrabold px-4 py-2 rounded-2xl text-sm sm:text-base">
+            ⬅ Tilbake
+          </button>
+        </div>
+
+        <!-- Rutenett med 12 unike SVG-monstre -->
+        <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 pt-4 scroll-area flex-1 pr-1">
+          <!-- Fylles dynamisk -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         4. TROFÉROM OG MINECRAFT EDUCATION-OPPDRAG (Med bildeopplasting til IndexedDB)
+         ========================================================================== -->
+    <section id="view-trophies" class="hidden flex-1 flex flex-col overflow-hidden">
+      <div class="bg-white/90 rounded-3xl p-4 sm:p-5 border-4 border-emerald-200 shadow-md flex-1 flex flex-col overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-emerald-100 shrink-0">
+          <h2 class="text-xl sm:text-2xl font-black text-emerald-900 flex items-center gap-2">
+            <span>⛏️</span> Minecraft-oppdrag
+          </h2>
+          <button onclick="showView('portal')" class="btn-3d bg-sky-500 hover:bg-sky-600 text-white font-extrabold px-4 py-2 rounded-2xl text-sm sm:text-base">
+            ⬅ Tilbake
+          </button>
+        </div>
+
+        <!-- Liste over oppdrag + opplastede skjermbilder -->
+        <div id="trophy-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 scroll-area flex-1 pr-1">
+          <!-- Fylles dynamisk -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         5. LYDBOKA / SKRIVEVERKSTED (Inspirert av Skolelyd & Book Creator)
+         - Leser hele ordet høyt ved mellomrom, og hele setningen ved punktum
+         - Velg omslagsbilde/klistremerker og farge på arket
+         - Automatisk lagring av flere sider/bøker i localStorage
+         ========================================================================== -->
+    <section id="view-writer" class="hidden flex-1 flex flex-col overflow-hidden gap-2">
+      <!-- Topplinje i LydBoka: Ren og kompakt -->
+      <div class="bg-white/95 rounded-2xl p-2 sm:p-2.5 border-3 border-teal-300 shadow-sm flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <!-- Venstre: Løypeknapp + Sidevelger -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button onclick="showView('writerHub')" class="btn-3d bg-teal-600 hover:bg-teal-700 text-white font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm flex items-center gap-1">
+            <span>📖</span> Løyper
+          </button>
+          <select id="writer-page-select" onchange="switchWriterPage(this.value)" class="bg-teal-50 border-2 border-teal-300 rounded-xl px-2.5 py-1.5 font-extrabold text-xs sm:text-sm text-teal-950">
+            <!-- Fylles dynamisk -->
+          </select>
+          <button onclick="createNewWriterPage()" class="btn-3d bg-emerald-500 hover:bg-emerald-600 text-white font-black px-2.5 py-1.5 rounded-xl text-xs sm:text-sm" title="Ny side">
+            +
+          </button>
+          <button onclick="deleteCurrentWriterPage()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-2.5 py-1.5 rounded-xl text-xs" title="Tøm eller slett side">
+            🗑️
+          </button>
+        </div>
+
+        <!-- Høyre: Lydbryter, Tastaturbryter og Lærerinfo -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button id="btn-writer-word-sound" onclick="toggleWriterSetting('speakWords')" class="px-2.5 py-1.5 rounded-xl font-extrabold text-xs border-2 bg-emerald-100 border-emerald-400 text-emerald-900">
+            🔊 Ordlyd: PÅ
+          </button>
+          <button id="btn-writer-keyboard" onclick="toggleWriterSetting('showOnScreenKB')" class="px-2.5 py-1.5 rounded-xl font-extrabold text-xs border-2 bg-sky-100 border-sky-400 text-sky-900">
+            🎹 Tastatur
+          </button>
+          <button onclick="openPedagogyModal('lydboka')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-extrabold px-2.5 py-1.5 rounded-xl text-xs" title="Lærerinfo">
+            👩‍🏫
+          </button>
+        </div>
+      </div>
+
+      <!-- Selve Boksiden (Book Creator-stil) -->
+      <div id="writer-paper" class="flex-1 bg-amber-50/95 rounded-3xl border-4 border-amber-200 shadow-inner p-3 sm:p-5 flex flex-col justify-between overflow-hidden transition-colors">
+        <!-- Øverst på siden: Klistremerke/bilde-felt + Fargevelger + Les hele teksten -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b-2 border-amber-200/70 shrink-0">
+          <!-- Klistremerker som barnet kan sette på siden for å illustrere -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs font-extrabold text-slate-500 mr-1">Bilde:</span>
+            <button onclick="setWriterSticker('🏰')" class="text-2xl hover:scale-125 transition-transform">🏰</button>
+            <button onclick="setWriterSticker('🦖')" class="text-2xl hover:scale-125 transition-transform">🦖</button>
+            <button onclick="setWriterSticker('🚀')" class="text-2xl hover:scale-125 transition-transform">🚀</button>
+            <button onclick="setWriterSticker('🦄')" class="text-2xl hover:scale-125 transition-transform">🦄</button>
+            <button onclick="setWriterSticker('⚽')" class="text-2xl hover:scale-125 transition-transform">⚽</button>
+            <button onclick="setWriterSticker('🐱')" class="text-2xl hover:scale-125 transition-transform">🐱</button>
+            <button onclick="setWriterSticker('🌈')" class="text-2xl hover:scale-125 transition-transform">🌈</button>
+            <button onclick="setWriterSticker('🍦')" class="text-2xl hover:scale-125 transition-transform">🍦</button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Bakgrunnsfarge på boksiden -->
+            <div class="flex items-center gap-1 bg-white/80 px-2 py-1 rounded-xl border border-slate-200">
+              <button onclick="setWriterBg('#fffbeb')" class="w-5 h-5 rounded-full bg-amber-50 border border-slate-400" title="Gul side"></button>
+              <button onclick="setWriterBg('#ffffff')" class="w-5 h-5 rounded-full bg-white border border-slate-400" title="Hvit side"></button>
+              <button onclick="setWriterBg('#f0f9ff')" class="w-5 h-5 rounded-full bg-sky-50 border border-slate-400" title="Blå side"></button>
+              <button onclick="setWriterBg('#fdf2f8')" class="w-5 h-5 rounded-full bg-pink-50 border border-slate-400" title="Rosa side"></button>
+            </div>
+
+            <!-- Les opp hele historien -->
+            <button onclick="speakEntireWriterPage()" class="btn-3d bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-3.5 py-1.5 rounded-2xl text-xs sm:text-sm flex items-center gap-1.5 shadow">
+              <span class="text-lg">🔊</span> Les boka mi!
+            </button>
+          </div>
+        </div>
+
+        <!-- Midtdel: Valgt illustrasjon + Stort, tydelig skrivefelt -->
+        <div class="flex-1 flex flex-col sm:flex-row items-center sm:items-stretch gap-3 my-2 overflow-hidden">
+          <!-- Illustrasjonskort på venstre side (eller øverst på mobil) -->
+          <div onclick="speakEntireWriterPage()" class="w-24 h-24 sm:w-36 sm:h-auto bg-white rounded-2xl border-3 border-amber-300 shadow-sm flex flex-col items-center justify-center shrink-0 cursor-pointer hover:scale-[1.02] transition-transform p-2">
+            <div id="writer-active-sticker" class="text-6xl sm:text-7xl leading-none select-none">🏰</div>
+          </div>
+
+          <!-- Selve tekstområdet (Fungerer både med fysisk tastatur, iPad-tastatur og skjermtastaturet under) -->
+          <textarea
+            id="writer-textarea"
+            oninput="handleWriterInput(event)"
+            onkeydown="handleWriterKeydown(event)"
+            placeholder="Skriv her..."
+            style="user-select: text; -webkit-user-select: text;"
+            class="reading-font flex-1 w-full h-full bg-white/90 rounded-2xl border-3 border-slate-300 focus:border-teal-500 focus:outline-none p-3 sm:p-4 text-2xl sm:text-3xl font-bold text-slate-800 leading-relaxed resize-none scroll-area"
+          ></textarea>
+        </div>
+
+        <!-- Nederst: Valgfritt skjermtastatur med RØDE vokaler og BLÅ konsonanter -->
+        <div id="writer-onscreen-kb" class="pt-1 border-t-2 border-amber-200/70 shrink-0">
+          <div id="writer-kb-rows" class="flex flex-col gap-1.5 items-center">
+            <!-- Bygges dynamisk av JS med røde vokaler og blå konsonanter -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         6. ORDJAKTEN (Inspirert av GraphoGame – Tilpasset ekte ord og visuell førstebokstav)
+         - Etappe 1: Visuell førstebokstav ut fra bilde (helt uten talesyntese ved start)
+         - Etappe 2–4: Naturlige norske småord, minimalpar og KJ/SKJ/SJ-ord
+         - Ved feil trykk: Viser umiddelbart riktig brikke slik at eleven må trykke på den
+         ========================================================================== -->
+    <section id="view-grapho" class="hidden flex-1 flex flex-col justify-between overflow-hidden py-1 gap-2">
+      <!-- Kompakt og ren topplinje i OrdJakten -->
+      <div class="bg-white/95 rounded-3xl p-2 sm:p-3 border-4 border-indigo-200 shadow-sm flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <!-- Venstre: Tilbake til løypevalg + Rask løypeveksler -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button onclick="showView('graphoHub')" class="btn-3d bg-indigo-600 hover:bg-indigo-700 text-white font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm flex items-center gap-1">
+            <span>🎧</span> Løyper
+          </button>
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl gap-1">
+            <button id="grapho-stage-1" onclick="startGraphoStage(1)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">1. 🖼️</button>
+            <button id="grapho-stage-2" onclick="startGraphoStage(2)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">2. 🌱</button>
+            <button id="grapho-stage-3" onclick="startGraphoStage(3)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">3. 🚀</button>
+            <button id="grapho-stage-4" onclick="startGraphoStage(4)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">4. 👑</button>
+          </div>
+        </div>
+
+        <!-- Høyre: Progresjon (0/10) + Lærerinfo-knapp -->
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-2xl border-2 border-indigo-200">
+            <div class="w-16 sm:w-24 h-3 bg-indigo-200 rounded-full overflow-hidden">
+              <div id="grapho-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <span id="grapho-progress-text" class="text-xs font-black text-indigo-900">0/10</span>
+          </div>
+
+          <button onclick="openGraphoStageModal()" class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-300 font-extrabold px-2.5 py-1.5 rounded-xl text-xs sm:text-sm" title="Om løypene (Lærerinfo)">
+            👩‍🏫
+          </button>
+        </div>
+      </div>
+
+      <!-- Hovedarena for OrdJakten -->
+      <div class="flex-1 bg-gradient-to-b from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl border-4 border-indigo-400 shadow-xl p-4 sm:p-6 flex flex-col justify-between items-center text-white relative overflow-hidden">
+        <!-- Midtfelt øverst: Enten Bilde-kort (Etappe 1 uten lyd) eller Lytt-knapp (Etappe 2-4 med ord) -->
+        <div class="text-center my-auto">
+          <!-- Visuell bildeboks for Etappe 1 (Førstebokstav uten lyd) -->
+          <div id="grapho-visual-box" class="hidden flex-col items-center justify-center">
+            <div class="bg-white rounded-3xl border-4 border-amber-300 shadow-2xl px-8 py-3.5 sm:px-10 sm:py-4 flex flex-col items-center justify-center gap-1.5">
+              <div id="grapho-visual-emoji" class="text-5xl sm:text-7xl leading-none select-none">☀️</div>
+              <div id="grapho-visual-word-mask" class="reading-font text-2xl sm:text-3xl font-black text-slate-800 tracking-widest">
+                _ O L
+              </div>
+            </div>
+          </div>
+
+          <!-- Lydknapp for Etappe 2, 3 og 4 (Ekte norske ord) -->
+          <button id="grapho-speaker-btn" onclick="speakGraphoTarget()" class="btn-3d bg-amber-400 hover:bg-amber-300 text-slate-900 w-20 h-20 sm:w-26 sm:h-26 rounded-full border-4 border-white shadow-2xl flex flex-col items-center justify-center mx-auto transition-transform active:scale-95">
+            <span class="text-4xl sm:text-5xl leading-none">🔊</span>
+          </button>
+
+          <div id="grapho-status-hint" class="mt-2 text-xs sm:text-sm font-extrabold text-indigo-200 tracking-wide min-h-[20px]">
+          </div>
+        </div>
+
+        <!-- Svarbrikker (Tilpasser kolonnebredde og tekststørrelse etter ordlengde) -->
+        <div id="grapho-options-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-4xl my-auto">
+          <!-- Fylles dynamisk av JS -->
+        </div>
+
+        <!-- Rundefeiring når 10/10 er fullført -->
+        <div id="grapho-round-complete" class="hidden absolute inset-0 bg-indigo-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
+          <div class="text-6xl mb-2">🌟</div>
+          <h3 class="text-2xl sm:text-3xl font-black mb-1">Etappe fullført!</h3>
+          <p class="text-indigo-200 font-bold text-sm sm:text-base mb-5">
+            Du klarte 10 oppgaver i strekk og fikk +2 ⭐ stjerner!
+          </p>
+          <div class="flex flex-wrap justify-center gap-3">
+            <button onclick="startGraphoStage(graphoCurrentStage)" class="btn-3d bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 py-3 rounded-2xl text-base sm:text-lg">
+              Spill en runde til 🔄
+            </button>
+            <button onclick="startGraphoStage((graphoCurrentStage % 4) + 1)" class="btn-3d bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-6 py-3 rounded-2xl text-base sm:text-lg">
+              Neste etappe ➡
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Skjult fil-input for bildeopplasting fra iPad/PC -->
+  <input type="file" id="minecraft-file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)" />
+
+  <!-- ==========================================================================
+       MODAL 1: EGG-KLEKKING (Hver 5. stjerne)
+       ========================================================================== -->
+  <div id="modal-egg" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 border-4 border-purple-400 shadow-2xl text-center flex flex-col items-center animate-pop">
+      <span class="bg-purple-100 text-purple-900 font-black px-3 py-1 rounded-full text-xs uppercase tracking-wider mb-2">
+        🥚 Samlebelønning!
+      </span>
+      <h2 id="egg-modal-title" class="text-2xl sm:text-3xl font-black text-slate-800">
+        Du fant et mystisk egg!
+      </h2>
+      <p id="egg-modal-subtitle" class="text-sm font-bold text-slate-500 mt-1">
+        Trykk på egget for å klekke det!
+      </p>
+
+      <div id="egg-stage" onclick="crackEggNow()" class="my-5 cursor-pointer flex items-center justify-center min-h-[180px]">
+        <!-- SVG-egg eller klekket SVG-monster -->
+      </div>
+
+      <div id="egg-creature-info" class="hidden bg-purple-50 border-2 border-purple-200 rounded-2xl p-3.5 w-full mb-4">
+        <div id="egg-creature-rarity" class="text-xs font-black uppercase text-purple-700">Vanlig</div>
+        <div id="egg-creature-name" class="text-xl font-black text-slate-800 mt-0.5">Monster</div>
+        <p id="egg-creature-desc" class="text-xs text-slate-600 mt-1"></p>
+      </div>
+
+      <button id="btn-egg-close" onclick="closeEggModal()" class="hidden btn-3d w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-2xl text-base">
+        Videre ▶
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: MINISPILL (Hver 10. stjerne + Snarvei fra menyen)
+       ========================================================================== -->
+  <div id="modal-minigame" class="hidden fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full h-[90dvh] max-h-[680px] p-4 sm:p-5 border-4 border-amber-400 shadow-2xl flex flex-col overflow-hidden">
+      <!-- Valgmeny før start -->
+      <div id="minigame-Menu" class="flex-1 flex flex-col justify-between overflow-y-auto scroll-area">
+        <div class="flex items-center justify-between border-b pb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl sm:text-3xl">🕹️</span>
+            <h2 class="text-xl sm:text-2xl font-black text-slate-800">Minispill</h2>
+          </div>
+          <button onclick="closeMinigameModal()" class="text-slate-400 hover:text-slate-700 font-black text-2xl px-2">✕</button>
+        </div>
+
+        <!-- Innstillinger for minispillet: Nivå, Bobletype og Hastighet -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3">
+          <div class="bg-slate-50 p-2.5 rounded-2xl border flex flex-col items-center gap-1.5">
+            <span class="text-xs font-extrabold text-slate-500">1. Velg løype</span>
+            <div class="inline-flex bg-slate-200 p-1 rounded-xl gap-1">
+              <button id="mg-lvl-1" onclick="setMinigameLevel(1)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">Løype 1</button>
+              <button id="mg-lvl-2" onclick="setMinigameLevel(2)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">Løype 2</button>
+              <button id="mg-lvl-3" onclick="setMinigameLevel(3)" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">Løype 3</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-2.5 rounded-2xl border flex flex-col items-center gap-1.5">
+            <span class="text-xs font-extrabold text-slate-500">2. Hva er i boblene?</span>
+            <div class="inline-flex bg-slate-200 p-1 rounded-xl gap-1">
+              <button id="mg-mode-text" onclick="setMinigameBubbleMode('text')" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">🔤 Ord/Bokstav</button>
+              <button id="mg-mode-pictures" onclick="setMinigameBubbleMode('pictures')" class="px-2.5 py-1 rounded-lg font-extrabold text-xs">🖼️ Bilder (Uten lyd)</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-2.5 rounded-2xl border flex flex-col items-center gap-1.5">
+            <span class="text-xs font-extrabold text-slate-500">3. Hastighet</span>
+            <div class="inline-flex bg-slate-200 p-1 rounded-xl gap-1">
+              <button id="mg-speed-slow" onclick="setMinigameSpeed('slow')" class="px-3 py-1 rounded-lg font-extrabold text-xs">🐢 Rolig</button>
+              <button id="mg-speed-normal" onclick="setMinigameSpeed('normal')" class="px-3 py-1 rounded-lg font-extrabold text-xs">🚶 Passe</button>
+              <button id="mg-speed-fast" onclick="setMinigameSpeed('fast')" class="px-3 py-1 rounded-lg font-extrabold text-xs">🐇 Rask</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Spillkort -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-auto">
+          <button onclick="startMinigame('balloons')" class="btn-3d bg-gradient-to-b from-sky-400 to-blue-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-2 min-h-[170px]">
+            <span class="text-6xl">🎈</span>
+            <span class="text-2xl font-black">Bokstav-Ballonger</span>
+            <span class="bg-white/90 text-blue-900 font-black px-4 py-1 rounded-full text-xs mt-1">Start ▶</span>
+          </button>
+
+          <button onclick="startMinigame('catcher')" class="btn-3d bg-gradient-to-b from-purple-500 to-indigo-600 text-white rounded-3xl p-6 border-4 border-white shadow-xl flex flex-col items-center justify-center gap-2 min-h-[170px]">
+            <span class="text-6xl">👾</span>
+            <span class="text-2xl font-black">Monster-Mat</span>
+            <span class="bg-white/90 text-indigo-900 font-black px-4 py-1 rounded-full text-xs mt-1">Start ▶</span>
+          </button>
+        </div>
+
+        <div class="text-right pt-2">
+          <button onclick="closeMinigameModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold px-5 py-2 rounded-xl text-xs sm:text-sm">
+            Tilbake
+          </button>
+        </div>
+      </div>
+
+      <!-- Selve Minispill-arenaen -->
+      <div id="minigame-Arena" class="hidden flex-1 flex flex-col overflow-hidden relative">
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-100 px-3 py-2 rounded-2xl border mb-2 shrink-0">
+          <div class="flex items-center gap-2">
+            <button id="mg-btn-speak" onclick="speakMinigameTarget()" class="btn-3d bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-3 py-1.5 rounded-xl text-lg">
+              🔊
+            </button>
+            <span id="mg-target-emoji" class="text-3xl sm:text-4xl leading-none">☀️</span>
+            <div id="mg-target-letters" class="reading-font text-xl sm:text-2xl font-black text-slate-800 tracking-wider">
+              S O L
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="inline-flex bg-white p-0.5 rounded-xl border gap-0.5">
+              <button id="mg-live-slow" onclick="setMinigameSpeed('slow')" class="px-2 py-1 rounded-lg text-xs font-black">🐢</button>
+              <button id="mg-live-normal" onclick="setMinigameSpeed('normal')" class="px-2 py-1 rounded-lg text-xs font-black">🚶</button>
+              <button id="mg-live-fast" onclick="setMinigameSpeed('fast')" class="px-2 py-1 rounded-lg text-xs font-black">🐇</button>
+            </div>
+            <span class="bg-amber-100 text-amber-900 font-black px-2.5 py-1 rounded-xl text-xs">⭐ <span id="mg-score">0</span></span>
+            <span class="bg-sky-100 text-sky-900 font-black px-2.5 py-1 rounded-xl text-xs">⏱️ <span id="mg-timer">60</span>s</span>
+            <button onclick="stopAndExitMinigame()" class="bg-rose-100 hover:bg-rose-200 text-rose-800 font-black px-2.5 py-1 rounded-xl text-xs">✕</button>
+          </div>
+        </div>
+
+        <div class="flex-1 bg-gradient-to-b from-sky-100 to-emerald-50 rounded-2xl border-2 border-sky-200 relative overflow-hidden">
+          <canvas id="minigame-canvas" class="w-full h-full block"></canvas>
+
+          <div id="minigame-gameover" class="hidden absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 text-center">
+            <div class="text-6xl mb-2">🎉</div>
+            <h3 class="text-2xl sm:text-3xl font-black mb-1">Tiden er ute!</h3>
+            <p class="text-amber-300 font-extrabold text-lg mb-5">Poeng: <span id="mg-final-score">0</span></p>
+            <div class="flex gap-3">
+              <button onclick="startMinigame(mgActiveType)" class="btn-3d bg-emerald-500 hover:bg-emerald-600 text-white font-black px-5 py-2.5 rounded-2xl text-sm">
+                Spill igjen 🔄
+              </button>
+              <button onclick="closeMinigameModal()" class="btn-3d bg-amber-400 hover:bg-amber-500 text-slate-900 font-black px-5 py-2.5 rounded-2xl text-sm">
+                Ferdig ▶
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3A: STORT SKJERMBILDE FRA MINECRAFT
+       ========================================================================== -->
+  <div id="modal-photo" onclick="closePhotoModal()" class="hidden fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div onclick="event.stopPropagation()" class="bg-white rounded-3xl max-w-2xl w-full p-4 sm:p-5 border-4 border-emerald-400 shadow-2xl flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <h3 id="photo-modal-caption" class="reading-font font-black text-slate-800 text-sm sm:text-base"></h3>
+        <button onclick="closePhotoModal()" class="text-slate-400 hover:text-slate-700 font-black text-2xl px-2">✕</button>
+      </div>
+      <img id="photo-modal-img" src="" alt="Minecraft skjermbilde" class="w-full max-h-[70dvh] object-contain rounded-2xl bg-slate-900" />
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3B: ORDJAKTEN – LÆRERBESKRIVELSE AV ETAPPER
+       ========================================================================== -->
+  <div id="modal-grapho-stages" onclick="closeGraphoStageModal()" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+    <div onclick="event.stopPropagation()" class="bg-white rounded-3xl max-w-3xl w-full max-h-[88dvh] p-5 sm:p-6 border-4 border-indigo-400 shadow-2xl flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between border-b pb-3 shrink-0">
+        <div>
+          <span class="bg-indigo-100 text-indigo-900 font-black px-2.5 py-0.5 rounded-full text-xs uppercase">👩‍🏫 Lærerinfo</span>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-800 mt-1">🎧 OrdJakten – Om løypene</h2>
+        </div>
+        <button onclick="closeGraphoStageModal()" class="text-slate-400 hover:text-slate-700 font-black text-2xl px-2">✕</button>
+      </div>
+      <div id="grapho-stage-modal-list" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 py-4 overflow-y-auto scroll-area pr-1">
+        <!-- Fylles dynamisk -->
+      </div>
+      <div class="border-t pt-3 text-right shrink-0">
+        <button onclick="closeGraphoStageModal()" class="btn-3d bg-slate-800 text-white font-extrabold px-6 py-2 rounded-xl text-xs sm:text-sm">
+          Lukk
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3C: PEDAGOGISK LÆRERINFO (Sprettopp-rute for kolleger/lærere)
+       ========================================================================== -->
+  <div id="modal-pedagogy" onclick="closePedagogyModal()" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+    <div onclick="event.stopPropagation()" class="bg-white rounded-3xl max-w-2xl w-full max-h-[88dvh] p-5 sm:p-6 border-4 border-amber-400 shadow-2xl flex flex-col overflow-hidden animate-pop">
+      <div class="flex items-center justify-between border-b-2 border-amber-100 pb-3 shrink-0">
+        <div>
+          <span class="bg-amber-100 text-amber-900 font-black px-2.5 py-0.5 rounded-full text-xs uppercase tracking-wider">
+            👩‍🏫 Pedagogisk beskrivelse for lærere
+          </span>
+          <h2 id="pedagogy-modal-title" class="text-xl sm:text-2xl font-black text-slate-800 mt-1">
+            Om lese- og skriveportalen
+          </h2>
+        </div>
+        <button onclick="closePedagogyModal()" class="text-slate-400 hover:text-slate-700 font-black text-2xl px-2">✕</button>
+      </div>
+
+      <!-- Faner for å bla mellom programmene -->
+      <div class="flex flex-wrap gap-1.5 pt-3 shrink-0">
+        <button id="ped-tab-overview" onclick="openPedagogyModal('overview')" class="px-3 py-1.5 rounded-xl font-extrabold text-xs bg-slate-800 text-white">Oversikt</button>
+        <button id="ped-tab-ordhelten" onclick="openPedagogyModal('ordhelten')" class="px-3 py-1.5 rounded-xl font-extrabold text-xs bg-slate-100 text-slate-700">🦸‍♂️ Ordhelten</button>
+        <button id="ped-tab-lydboka" onclick="openPedagogyModal('lydboka')" class="px-3 py-1.5 rounded-xl font-extrabold text-xs bg-slate-100 text-slate-700">📖 LydBoka</button>
+        <button id="ped-tab-ordjakten" onclick="openPedagogyModal('ordjakten')" class="px-3 py-1.5 rounded-xl font-extrabold text-xs bg-slate-100 text-slate-700">🎧 OrdJakten</button>
+      </div>
+
+      <div id="pedagogy-modal-body" class="py-4 space-y-3 text-xs sm:text-sm text-slate-700 overflow-y-auto scroll-area pr-1 leading-relaxed">
+        <!-- Fylles dynamisk -->
+      </div>
+
+      <div class="border-t-2 border-slate-100 pt-3 flex items-center justify-end shrink-0">
+        <button onclick="closePedagogyModal()" class="btn-3d bg-slate-800 text-white font-extrabold px-6 py-2 rounded-xl text-xs sm:text-sm">
+          Lukk vindu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 4: FORELDRE / LÆRER-HJØRNE (Testing & Nullstilling uten alert/confirm)
+       ========================================================================== -->
+  <div id="modal-teacher" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 border-4 border-slate-300 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h2 class="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
+          <span>⚙️</span> Foreldre- og Lærerhjørne
+        </h2>
+        <button onclick="closeTeacherModal()" class="text-slate-400 hover:text-slate-700 font-black text-xl px-2">✕</button>
+      </div>
+
+      <div class="py-4 space-y-4 text-sm text-slate-700 max-h-[70dvh] overflow-y-auto scroll-area pr-1">
+        <!-- Stemmevelger for best mulig norsk uttale -->
+        <div class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="font-bold text-amber-950">🗣️ Norsk stemme (Talesyntese)</div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="refreshVoicesManual()" class="bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-lg text-xs">
+                🔄 Søk på nytt
+              </button>
+              <button onclick="speakText('Hei! Vi baker boller på toppen av en bratt bakke, og gir en fin gave.')" class="bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold px-2.5 py-1 rounded-lg text-xs">
+                🔊 Test uttale
+              </button>
+            </div>
+          </div>
+          <select id="select-voice" onchange="changePreferredVoice(this.value)" class="w-full bg-white border-2 border-amber-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800">
+            <option value="">Automatisk (Beste norske stemme)</option>
+          </select>
+          <p id="voice-status-hint" class="text-[11px] text-amber-800 leading-relaxed">
+            Tips: Apple sperrer Siri-stemmene for nettsider. For å bruke Henrik eller Nora (Forbedret) på iPad: Velg stemmen under Innstillinger → Tilgjengelighet → Lest innhold → Stemmer → Norsk, lukk Safari helt (sveip opp) og åpne siden på nytt.
+          </p>
+        </div>
+
+        <!-- Innstilling for automatisk opplesning -->
+        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border">
+          <div>
+            <div class="font-bold text-slate-800">Automatisk opplesning ved ny oppgave</div>
+            <div class="text-xs text-slate-500">Leser opp målordet automatisk når oppgaven starter</div>
+          </div>
+          <button id="btn-toggle-autospeak" onclick="toggleAutoSpeak()" class="bg-emerald-500 text-white font-extrabold px-3.5 py-1.5 rounded-xl text-xs">
+            PÅ
+          </button>
+        </div>
+
+        <!-- Hurtigtesting av belønninger -->
+        <div class="bg-sky-50 p-3.5 rounded-2xl border border-sky-200">
+          <div class="font-bold text-sky-900 mb-2">🧪 Hurtigtest for voksne:</div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="closeTeacherModal(); triggerEggReward();" class="btn-3d bg-purple-500 hover:bg-purple-600 text-white font-bold px-3 py-2 rounded-xl text-xs">
+              🥚 Test Egg-klekking nå
+            </button>
+            <button onclick="closeTeacherModal(); openMinigameModal();" class="btn-3d bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-2 rounded-xl text-xs">
+              🕹️ Test Minispill nå
+            </button>
+          </div>
+        </div>
+
+        <!-- Nullstill fremgang med innebygd bekreftelse -->
+        <div class="bg-rose-50 p-3.5 rounded-2xl border border-rose-200">
+          <div class="font-bold text-rose-900">🗑️ Nullstill all fremgang på denne enheten</div>
+          <p class="text-xs text-rose-700 mt-0.5 mb-2.5">
+            Sletter stjerner, klekkede monstre og alle opplastede Minecraft-skjermbilder i IndexedDB.
+          </p>
+
+          <div id="reset-step-1">
+            <button onclick="showResetConfirm(true)" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 rounded-xl text-xs">
+              Nullstill fremgang...
+            </button>
+          </div>
+
+          <div id="reset-step-2" class="hidden flex items-center gap-2 bg-white p-2 rounded-xl border border-rose-300">
+            <span class="text-xs font-extrabold text-rose-800">Er du helt sikker?</span>
+            <button onclick="confirmFullReset()" class="bg-rose-600 text-white font-black px-3 py-1.5 rounded-lg text-xs">
+              Ja, slett alt
+            </button>
+            <button onclick="showResetConfirm(false)" class="bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs">
+              Avbryt
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-right border-t pt-3">
+        <button onclick="closeTeacherModal()" class="btn-3d bg-slate-800 text-white font-bold px-5 py-2 rounded-xl text-sm">
+          Ferdig
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT: ORDBANK, MONSTRE, MINECRAFT-OPPDRAG, INDEXEDDB OG SPILLMOTOR
+       ========================================================================== -->
+  <script>
+    /* ==========================================================================
+       1. ORDBANK (WORD_BANK) – ENKEL Å UTVIDE TIL 1000 ORD SENERE!
+       --------------------------------------------------------------------------
+       Slik legger du til nye ord:
+       Legg bare til et nytt objekt i WORD_BANK-listen under:
+       {
+         level: 1,                  // 1, 2 eller 3
+         word: 'HUND',              // Selve målordet (skriv med STORE bokstaver)
+         emoji: '🐶',               // Bilde/emoji som viser ordet
+         hint: 'Et dyr som sier voff', // Kort, barnevennlig forklaring (leses også opp ved behov)
+         distractorEmojis: ['🐱', '🐷'], // (Valgfritt) 2 lure-emojier. Hvis utelatt, velger spillet automatisk!
+         distractorLetters: ['K', 'S', 'O'] // (Valgfritt) Ekstra lurebokstaver. Hvis utelatt, velger spillet automatisk!
+       }
+       ========================================================================== */
+    const WORD_BANK = [
+      // ---------------- NIVÅ 1: Enkle, lydrette ord (12 oppgaver) ----------------
+      { level: 1, word: 'SOL',  emoji: '☀️', hint: 'Den skinner varmt på himmelen om dagen.', distractorEmojis: ['🌙', '🌧️'], distractorLetters: ['L', 'Å', 'M'] },
+      { level: 1, word: 'BIL',  emoji: '🚗', hint: 'Har fire hjul og kjører på veien.',       distractorEmojis: ['🚲', '✈️'], distractorLetters: ['P', 'L', 'E'] },
+      { level: 1, word: 'MUS',  emoji: '🐭', hint: 'Et lite grått dyr som elsker ost.',       distractorEmojis: ['🐱', '🐸'], distractorLetters: ['N', 'S', 'O'] },
+      { level: 1, word: 'KU',   emoji: '🐄', hint: 'Bor på gården, spiser gress og sier mø.', distractorEmojis: ['🐎', '🐖'], distractorLetters: ['G', 'O', 'S'] },
+      { level: 1, word: 'HUS',  emoji: '🏠', hint: 'En bygning med tak, vegger og dør.',      distractorEmojis: ['⛺', '🌲'], distractorLetters: ['S', 'O', 'K'] },
+      { level: 1, word: 'REV',  emoji: '🦊', hint: 'Et lurt dyr i skogen med rød pels.',      distractorEmojis: ['🐺', '🐿️'], distractorLetters: ['F', 'Æ', 'L'] },
+      { level: 1, word: 'IS',   emoji: '🍦', hint: 'Kaldt og veldig godt å spise om sommeren.',distractorEmojis: ['🍕', '🍎'], distractorLetters: ['S', 'E', 'L'] },
+      { level: 1, word: 'TOG',  emoji: '🚂', hint: 'Kjører fort på skinner og sier tut-tut.', distractorEmojis: ['🚌', '🚢'], distractorLetters: ['K', 'Å', 'D'] },
+      { level: 1, word: 'BÅT',  emoji: '⛵', hint: 'Flyter og seiler oppå vannet.',           distractorEmojis: ['🚗', '🚁'], distractorLetters: ['O', 'P', 'R'] },
+      { level: 1, word: 'KATT', emoji: '🐱', hint: 'Et koselig dyr som maler og sier mjau.',  distractorEmojis: ['🐶', '🐭'], distractorLetters: ['S', 'E', 'L'] },
+      { level: 1, word: 'BALL', emoji: '⚽', hint: 'Rund leke som du kan sparke og kaste.',   distractorEmojis: ['🛷', '🪁'], distractorLetters: ['P', 'O', 'T'] },
+      { level: 1, word: 'SKO',  emoji: '👟', hint: 'Du har dem på føttene når du går ut.',    distractorEmojis: ['🧤', '🧢'], distractorLetters: ['K', 'Å', 'L'] },
+
+      // ---------------- NIVÅ 2: Minimalpar og dobbel konsonant (12 oppgaver) ----------------
+      { level: 2, word: 'BAKE',  spoken: 'bake.',  emoji: '👩‍🍳', hint: 'Å lage brød eller boller på kjøkkenet.',  distractorEmojis: ['⛰️', '🛌'], distractorLetters: ['K', 'S', 'R'], distractorWords: ['BAKKE', 'BADE', 'KAKE'] },
+      { level: 2, word: 'BAKKE', spoken: 'bakke.', emoji: '⛰️', hint: 'En bratt skråning du kan ake ned.',       distractorEmojis: ['👩‍🍳', '🌊'], distractorLetters: ['T', 'O', 'L'], distractorWords: ['BAKE', 'PAKKE', 'TAKKE'] },
+      { level: 2, word: 'TAK',   spoken: 'tak.',   emoji: '🛖', hint: 'Øverst på huset så det ikke regner inn.', distractorEmojis: ['🙏', '🧱'], distractorLetters: ['K', 'S', 'E'], distractorWords: ['TAKK', 'SAK', 'BAK'] },
+      { level: 2, word: 'TAKK',  spoken: 'takk!',  emoji: '🙏', hint: 'Et høflig ord vi sier når vi får en gave.',distractorEmojis: ['🛖', '👋'], distractorLetters: ['L', 'O', 'S'], distractorWords: ['TAK', 'PAKK', 'LAKK'] },
+      { level: 2, word: 'PEN',   spoken: 'pen.',   emoji: '✨', hint: 'Noe som er vakkert og fint å se på.',     distractorEmojis: ['🖊️', '🗑️'], distractorLetters: ['N', 'B', 'A'], distractorWords: ['PENN', 'BEN', 'SEN'] },
+      { level: 2, word: 'PENN',  spoken: 'penn.',  emoji: '🖊️', hint: 'Noe du holder i hånden for å skrive med.',distractorEmojis: ['✨', '📏'], distractorLetters: ['M', 'L', 'I'], distractorWords: ['PEN', 'VENN', 'RENN'] },
+      { level: 2, word: 'LESE',  spoken: 'lese.',  emoji: '📖', hint: 'Å se på bokstaver i en bok.',             distractorEmojis: ['🛻', '🏃'], distractorLetters: ['S', 'K', 'R'], distractorWords: ['LESSE', 'NESE', 'LEKE'] },
+      { level: 2, word: 'LESSE', spoken: 'lesse.', emoji: '🛻', hint: 'Å stable tunge kasser oppå en lastebil.', distractorEmojis: ['📖', '🚲'], distractorLetters: ['T', 'N', 'A'], distractorWords: ['LESE', 'MESSE', 'NISSE'] },
+      { level: 2, word: 'HATT',  spoken: 'hatt.',  emoji: '🎩', hint: 'Et plagg du har oppå hodet.',             distractorEmojis: ['👟', '🧣'], distractorLetters: ['T', 'K', 'O'], distractorWords: ['HAT', 'KATT', 'NATT'] },
+      { level: 2, word: 'MAT',   spoken: 'mat.',   emoji: '🍽️', hint: 'Det vi spiser når vi er sultne.',         distractorEmojis: ['🎩', '🥤'], distractorLetters: ['T', 'N', 'E'], distractorWords: ['MATT', 'HAT', 'FAT'] },
+      { level: 2, word: 'KOPP',  spoken: 'kopp.',  emoji: '☕', hint: 'Noe vi drikker varm kakao eller te av.',  distractorEmojis: ['🥣', '🥄'], distractorLetters: ['B', 'Å', 'T'], distractorWords: ['KOP', 'TOPP', 'SOPP'] },
+      { level: 2, word: 'HOPPE', spoken: 'hoppe.', emoji: '🦘', hint: 'Å sprette høyt opp i luften med beina.',  distractorEmojis: ['☕', '🛌'], distractorLetters: ['P', 'Å', 'K'], distractorWords: ['HOPE', 'KOPPE', 'STOPPE'] },
+
+      // ---------------- NIVÅ 3: Sammensatte grafemer og komplekse lyder (12 oppgaver) ----------------
+      { level: 3, word: 'KJOLE',   grapheme: 'KJ',  distractorGraphemes: ['SKJ', 'SK', 'SJ'], distractorWords: ['SKOLE', 'SKJOLE', 'KOLE'],  emoji: '👗', hint: 'Et fint klesplagg man kan ha på fest.',        distractorEmojis: ['🏫', '👖'], distractorLetters: ['S', 'K', 'R'] },
+      { level: 3, word: 'SKOLE',   grapheme: 'SK',  distractorGraphemes: ['KJ', 'SKJ', 'SJ'], distractorWords: ['KJOLE', 'STOLE', 'KJOLER'], emoji: '🏫', hint: 'Stedet der elever lærer å lese og regne.',     distractorEmojis: ['👗', '🏥'], distractorLetters: ['J', 'K', 'A'] },
+      { level: 3, word: 'SKJÆRE',  grapheme: 'SKJ', distractorGraphemes: ['KJ', 'SJ', 'SK'],  distractorWords: ['KJÆRE', 'SÆRE', 'LÆRE'],    emoji: '🔪', hint: 'Å dele brød eller mat med en skarp kniv.',     distractorEmojis: ['🥰', '🥄'], distractorLetters: ['K', 'E', 'O'] },
+      { level: 3, word: 'KJÆRE',   grapheme: 'KJ',  distractorGraphemes: ['SKJ', 'SJ', 'K'],  distractorWords: ['SKJÆRE', 'KÆRE', 'LÆRE'],   emoji: '🥰', hint: 'Noen man er veldig glad i.',                   distractorEmojis: ['🔪', '❄️'], distractorLetters: ['S', 'T', 'A'] },
+      { level: 3, word: 'SKJELL',  grapheme: 'SKJ', distractorGraphemes: ['KJ', 'SJ', 'SK'],  distractorWords: ['KJELL', 'SELL', 'FJELL'],   emoji: '🐚', hint: 'Ligger i sanden på stranden ved havet.',       distractorEmojis: ['🪨', '🦀'], distractorLetters: ['K', 'I', 'O'] },
+      { level: 3, word: 'SJØ',     grapheme: 'SJ',  distractorGraphemes: ['SKJ', 'KJ', 'S'],  distractorWords: ['SNØ', 'SKJØ', 'KØ'],        emoji: '🌊', hint: 'Stort vann med bølger der båtene seiler.',     distractorEmojis: ['🏔️', '🏜️'], distractorLetters: ['K', 'O', 'E'] },
+      { level: 3, word: 'REGN',    grapheme: 'GN',  distractorGraphemes: ['NG', 'NK', 'N'],   distractorWords: ['REN', 'RENG', 'TEGN'],      emoji: '🌧️', hint: 'Vann som drypper ned fra skyene.',             distractorEmojis: ['☀️', '🌈'], distractorLetters: ['I', 'J', 'K'] },
+      { level: 3, word: 'ØY',      grapheme: 'ØY',  distractorGraphemes: ['AU', 'EI', 'ÅY'],  distractorWords: ['HØY', 'RØY', 'ÅY'],         emoji: '🏝️', hint: 'Et stykke land med vann rundt på alle kanter.', distractorEmojis: ['🌋', '🏕️'], distractorLetters: ['Å', 'I', 'J'] },
+      { level: 3, word: 'HJERTE',  grapheme: 'HJ',  distractorGraphemes: ['J', 'KJ', 'GJ'],   distractorWords: ['JERTE', 'KJERTE', 'SMERTE'],emoji: '❤️', hint: 'Banker inni brystet ditt og betyr kjærlighet.',distractorEmojis: ['⭐', '🍀'], distractorLetters: ['J', 'K', 'S'] },
+      { level: 3, word: 'STJERNE', grapheme: 'STJ', distractorGraphemes: ['SKJ', 'SJ', 'ST'], distractorWords: ['SKJERNE', 'SJERNE', 'TERNE'],emoji: '⭐', hint: 'Lyser som en prikk på nattehimmelen.',         distractorEmojis: ['❤️', '☁️'], distractorLetters: ['K', 'H', 'A'] },
+      { level: 3, word: 'SKJOLD',  grapheme: 'SKJ', distractorGraphemes: ['KJ', 'SJ', 'SK'],  distractorWords: ['KJOLD', 'KALD', 'SOLGT'],   emoji: '🛡️', hint: 'Beskytter en ridder eller helt i Minecraft.',  distractorEmojis: ['⚔️', '🏹'], distractorLetters: ['K', 'Å', 'T'] },
+      { level: 3, word: 'SVERD',   grapheme: 'SV',  distractorGraphemes: ['ST', 'SK', 'VR'],  distractorWords: ['VERD', 'STERK', 'SVAR'],    emoji: '⚔️', hint: 'Et skarpt våpen for riddere og eventyrere.',   distractorEmojis: ['🛡️', '🪓'], distractorLetters: ['Æ', 'T', 'K'] }
+    ];
+
+    /* ==========================================================================
+       2. SAMLEALBUM – 12 UNIKE SVG-LESEMONSTRE (PokéMath-stil)
+       ========================================================================== */
+    const MONSTER_CATALOG = [
+      { id: 'm1',  name: 'Vokal-Vapsen',     rarity: 'Vanlig',     level: 1, color1: '#f472b6', color2: '#db2777', desc: 'Elsker lange vokaler og synger A-E-I-O-U!', eyeType: 'happy',   horns: 'antenna' },
+      { id: 'm2',  name: 'Bokstav-Bolla',    rarity: 'Vanlig',     level: 1, color1: '#38bdf8', color2: '#0284c7', desc: 'Triller rundt og samler på lydrette småord.', eyeType: 'big',     horns: 'ears' },
+      { id: 'm3',  name: 'Lyd-Løven',        rarity: 'Vanlig',     level: 1, color1: '#fbbf24', color2: '#d97706', desc: 'Brøler høyt hver gang du leser et ord helt riktig!', eyeType: 'proud',   horns: 'mane' },
+      { id: 'm4',  name: 'Stave-Selen',      rarity: 'Vanlig',     level: 1, color1: '#34d399', color2: '#059669', desc: 'Balanserer vanskelige bokstaver på snuten sin.', eyeType: 'wink',    horns: 'round' },
+      { id: 'm5',  name: 'Dobbelt-Trollet',  rarity: 'Sjelden',    level: 2, color1: '#a78bfa', color2: '#7c3aed', desc: 'Passer på at tvilling-konsonantene alltid står sammen!', eyeType: 'double',  horns: 'horns' },
+      { id: 'm6',  name: 'Rime-Reven',       rarity: 'Sjelden',    level: 2, color1: '#fb923c', color2: '#ea580c', desc: 'Hopper over hver eneste bakke mens den baker kake.', eyeType: 'happy',   horns: 'ears' },
+      { id: 'm7',  name: 'Konsonant-Krabba', rarity: 'Sjelden',    level: 2, color1: '#f87171', color2: '#dc2626', desc: 'Knipser bort lurebokstaver med de sterke klørne sine.', eyeType: 'big',     horns: 'crown' },
+      { id: 'm8',  name: 'Gnist-Ugla',       rarity: 'Sjelden',    level: 2, color1: '#60a5fa', color2: '#2563eb', desc: 'Ser forskjell på TAK og TAKK selv i stummende mørke.', eyeType: 'proud',   horns: 'tufts' },
+      { id: 'm9',  name: 'Skjell-Dragen',    rarity: 'Episk',      level: 3, color1: '#2dd4bf', color2: '#0d9488', desc: 'Mester i skjulte SKJ- og KJ-lyder langs kysten.', eyeType: 'wink',    horns: 'horns' },
+      { id: 'm10', name: 'Smaragd-Golem',    rarity: 'Episk',      level: 3, color1: '#4ade80', color2: '#16a34a', desc: 'Bygger gigantiske tårn i Minecraft når du leser.', eyeType: 'double',  horns: 'crown' },
+      { id: 'm11', name: 'Stjerne-Føniks',   rarity: 'Legendarisk',level: 3, color1: '#facc15', color2: '#ca8a04', desc: 'Lyser opp hele leseverdenen med magiske stjerner!', eyeType: 'proud',   horns: 'crown' },
+      { id: 'm12', name: 'Diamant-Dragen',   rarity: 'Legendarisk',level: 3, color1: '#818cf8', color2: '#4f46e5', desc: 'Den aller sjeldneste ordhelten i hele kongeriket!', eyeType: 'big',     horns: 'horns' }
+    ];
+
+    /* ==========================================================================
+       3. MINECRAFT EDUCATION-BYGGEOPPDRAG (Tilpasset nivåene)
+       ========================================================================== */
+    const MINECRAFT_MISSIONS = [
+      // Nivå 1 oppdrag
+      { id: 'mc1', level: 1, icon: '🏠', text: 'Bygg et gult hus med en rød dør.' },
+      { id: 'mc2', level: 1, icon: '🐄', text: 'Lag et gjerde med en ku og en sau inni.' },
+      { id: 'mc3', level: 1, icon: '⛵', text: 'Bygg en liten båt som ligger på vannet.' },
+      { id: 'mc4', level: 1, icon: '🌲', text: 'Plant tre trær og sett en fakkel ved siden av.' },
+      // Nivå 2 oppdrag
+      { id: 'mc5', level: 2, icon: '🌉', text: 'Bygg en lang bro over en elv med tre fakler på.' },
+      { id: 'mc6', level: 2, icon: '⛰️', text: 'Bygg en liten hytte med høyt tak på toppen av en bakke.' },
+      { id: 'mc7', level: 2, icon: '🚂', text: 'Lag en togbane som går fra et hus til en gruve.' },
+      { id: 'mc8', level: 2, icon: '🎂', text: 'Lag et fint kjøkken med et bord og en kake oppå.' },
+      // Nivå 3 oppdrag
+      { id: 'mc9',  level: 3, icon: '🏰', text: 'Bygg et kjempehøyt tårn med skjold på veggen og en bakke foran.' },
+      { id: 'mc10', level: 3, icon: '🏝️', text: 'Bygg en hemmelig skattekiste på en øy midt i sjøen.' },
+      { id: 'mc11', level: 3, icon: '❤️', text: 'Bygg et stort rødt hjerte og en gul stjerne høyt oppe i luften.' },
+      { id: 'mc12', level: 3, icon: '⚔️', text: 'Bygg en ridderborg med port, to vakter og et stort sverd på veggen.' }
+    ];
+
+    /* ==========================================================================
+       4. TILSTAND (STATE) & LOKAL LAGRING (localStorage + IndexedDB for bilder)
+       ========================================================================== */
+    const STORAGE_KEY = 'ordhelten_save_v1';
+
+    let state = {
+      stars: 0,
+      useLowercase: false,      // false = VERSALER (ABC), true = små bokstaver (abc)
+      autoSpeak: true,          // Les opp automatisk ved oppgavestart
+      preferredVoiceURI: '',    // Lagret norsk favorittstemme
+      taskMode: 'mixed',        // 'mixed', 'word2pic', 'build'
+      currentLevel: 1,
+      minigameSpeed: 'slow',    // 'slow' (Rolig - standard), 'normal' (Passe), 'fast' (Rask)
+      minigameBubbleMode: 'text', // 'text' (Bokstaver/Ord med lyd) | 'pictures' (Bilder i boblene uten lyd)
+      unlockedMonsters: [],     // Array med monster-IDer (f.eks. ['m1', 'm2'])
+      unlockedMissions: MINECRAFT_MISSIONS.map(m => m.id) // Alle oppdrag er åpne fra hovedmenyen!
+    };
+
+    // Aktiv spilløkt-tilstand
+    let currentView = 'portal';
+    let lastGameOrHome = 'portal';
+    let taskQueue = [];
+    let currentTask = null;
+    let lastSolvedTask = null;  // Husker forrige løste oppgave slik at eleven sendes tilbake ved feil
+    let placedLetters = [];     // For "Bygg ordet"
+    let currentTilePool = [];   // Bokstavbrikker i nåværende oppgave
+    let isTransitioning = false;
+    let pendingEggMonster = null;
+    let eggCracked = false;
+    let activeUploadMissionId = null;
+    let audioHelpTimer = null;        // Skjult 10-sekunders timer for "Ord-til-bilde"
+    let isAudioHelpUnlocked = false;  // Om lydhjelp er låst opp på nåværende oppgave
+
+    // Last inn lagret tilstand fra localStorage
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state = { ...state, ...parsed };
+        }
+      } catch (err) {
+        console.warn('Kunne ikke lese localStorage:', err);
+      }
+      updateTopBarUI();
+      updateCaseUI();
+      updateModeButtonsUI();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn('Kunne ikke lagre til localStorage:', err);
+      }
+      updateTopBarUI();
+    }
+
+    /* ==========================================================================
+       5. INDEXEDDB FOR MINECRAFT-SKJERMBILDER (Unngår 5 MB-grensen i Safari)
+       ========================================================================== */
+    const DB_NAME = 'OrdheltenMinecraftDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'screenshots';
+
+    function openImageDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'missionId' });
+          }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function saveScreenshotToDB(missionId, dataUrl) {
+      try {
+        const db = await openImageDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          store.put({
+            missionId,
+            dataUrl,
+            updatedAt: new Date().toISOString()
+          });
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = (e) => reject(e.target.error);
+        });
+      } catch (err) {
+        console.error('IndexedDB lagringsfeil:', err);
+        return false;
+      }
+    }
+
+    async function getAllScreenshotsFromDB() {
+      try {
+        const db = await openImageDB();
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const map = {};
+            (req.result || []).forEach(item => {
+              map[item.missionId] = item.dataUrl;
+            });
+            resolve(map);
+          };
+          req.onerror = () => resolve({});
+        });
+      } catch (err) {
+        return {};
+      }
+    }
+
+    async function clearAllScreenshotsInDB() {
+      try {
+        const db = await openImageDB();
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).clear();
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        });
+      } catch (err) {
+        return false;
+      }
+    }
+
+    /* ==========================================================================
+       6. NORSK TALESYNTESE (window.speechSynthesis) & LYDEFFEKTER (Web Audio)
+       ========================================================================== */
+    let norwegianVoice = null;
+    let availableNorwegianVoices = [];
+
+    // Rangerer norske stemmer slik at vi unngår engelske fallback-stemmer og prioriterer Natural/Enhanced
+    function scoreNorwegianVoice(v) {
+      const lang = (v.lang || '').toLowerCase();
+      const name = (v.name || '').toLowerCase();
+      let score = 0;
+
+      if (lang.startsWith('nb')) score += 100;
+      else if (lang.startsWith('no')) score += 90;
+      else if (lang.startsWith('nn')) score += 80;
+      else if (name.includes('norwegian') || name.includes('norsk')) score += 70;
+      else return -1; // Ikke en norsk stemme!
+
+      // Prioriter høykvalitets neurale stemmer (Edge Natural, Apple Enhanced/Siri, Google)
+      if (name.includes('natural') || name.includes('online')) score += 50;
+      if (name.includes('enhanced') || name.includes('forbedret') || name.includes('premium')) score += 45;
+      if (name.includes('pernille') || name.includes('finn') || name.includes('iselin')) score += 30;
+      if (name.includes('nora') || name.includes('henrik')) score += 25;
+      if (name.includes('google')) score += 15;
+
+      // Nedprioriter flerspråklige engelske stemmer som later som de kan norsk
+      if (name.includes('multilingual') && !lang.startsWith('nb') && !lang.startsWith('no')) {
+        score -= 80;
+      }
+      return score;
+    }
+
+    function initVoices() {
+      if (!('speechSynthesis' in window)) return;
+      const allVoices = window.speechSynthesis.getVoices() || [];
+      if (allVoices.length === 0) return;
+
+      availableNorwegianVoices = allVoices
+        .map(v => ({ voice: v, score: scoreNorwegianVoice(v) }))
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(item => item.voice);
+
+      // Bruk valgt favorittstemme hvis den finnes, ellers den høyest rangerte norske stemmen
+      if (state.preferredVoiceURI) {
+        const chosen = allVoices.find(v => v.voiceURI === state.preferredVoiceURI);
+        if (chosen) {
+          norwegianVoice = chosen;
+          populateVoiceDropdown();
+          return;
+        }
+      }
+
+      norwegianVoice = availableNorwegianVoices[0] || null;
+      populateVoiceDropdown();
+    }
+
+    function populateVoiceDropdown() {
+      const select = document.getElementById('select-voice');
+      const statusHint = document.getElementById('voice-status-hint');
+      if (!select) return;
+
+      const allVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+      select.innerHTML = '<option value="">Automatisk (Beste norske stemme)</option>';
+
+      availableNorwegianVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.voiceURI;
+        opt.textContent = `🇳🇴 ${v.name} (${v.lang})`;
+        if (state.preferredVoiceURI === v.voiceURI) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      if (statusHint) {
+        if (availableNorwegianVoices.length === 0 && allVoices.length > 0) {
+          statusHint.innerHTML = '⚠️ <strong>Obs!</strong> Nettleseren din fant ingen norsk stemme på denne enheten, og bruker derfor en utenlandsk stemme med aksent. Prøv å åpne spillet i <strong>Microsoft Edge</strong> på PC eller <strong>Safari på iPad</strong>!';
+          statusHint.className = 'text-[11px] text-rose-700 font-semibold leading-relaxed';
+        } else if (norwegianVoice) {
+          statusHint.innerHTML = `✅ Aktiv norsk stemme: <strong>${norwegianVoice.name}</strong> (${availableNorwegianVoices.length} norske funnet). <br/>Tips for iPad: Apple sperrer Siri for nettsider. For å bruke <strong>Henrik</strong> eller <strong>Nora (Forbedret)</strong> må den settes som standard under Innstillinger → Tilgjengelighet → Lest innhold → Stemmer → Norsk, og Safari må lukkes helt og åpnes på nytt.`;
+          statusHint.className = 'text-[11px] text-amber-900 leading-relaxed';
+        }
+      }
+    }
+
+    function refreshVoicesManual() {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      // Trigg en tom opplesning for å tvinge Safari/iOS til å oppdatere stemmelisten
+      const dummy = new SpeechSynthesisUtterance('');
+      dummy.volume = 0;
+      window.speechSynthesis.speak(dummy);
+      setTimeout(() => {
+        initVoices();
+        playTone('pop');
+      }, 150);
+    }
+
+    function changePreferredVoice(voiceURI) {
+      state.preferredVoiceURI = voiceURI;
+      saveState();
+      initVoices();
+      speakText('Hei! Slik høres denne norske stemmen ut når vi leser sammen.');
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = initVoices;
+      initVoices();
+    }
+
+    // VIKTIG FOR NORSK TONELAG: Vi holder pitch = 1.0 og rate nær 1.0!
+    // Kunstig endring av pitch og lav rate ødelegger tonelag 2 (f.eks. "gave", "bake") og gir amerikansk aksent.
+    function speakText(text, rate = 0.96) {
+      if (!('speechSynthesis' in window)) return;
+      try {
+        if (!norwegianVoice) initVoices();
+        window.speechSynthesis.cancel();
+
+        // Send små bokstaver med punktum til slutt så stemmen bruker naturlig norsk setningsmelodi
+        let spokenString = text.trim().toLowerCase();
+        if (!/[.!?]$/.test(spokenString)) {
+          spokenString += '.';
+        }
+
+        const utter = new SpeechSynthesisUtterance(spokenString);
+        utter.lang = norwegianVoice ? norwegianVoice.lang : 'nb-NO';
+        if (norwegianVoice) utter.voice = norwegianVoice;
+        utter.rate = rate;
+        utter.pitch = 1.0; // Må være 1.0 for å bevare ekte norsk tonelag!
+        window.speechSynthesis.speak(utter);
+      } catch (e) {
+        console.warn('Talesyntese ikke tilgjengelig:', e);
+      }
+    }
+
+    function speakCurrentWord(includeHintOnMinimalPair = false) {
+      if (!currentTask) return;
+      const wordToSay = currentTask.spoken || currentTask.word;
+      if (includeHintOnMinimalPair && currentTask.level >= 2) {
+        speakText(`${wordToSay} ${currentTask.hint}`, 0.96);
+      } else {
+        speakText(wordToSay, 0.94);
+      }
+    }
+
+    function speakCurrentHint() {
+      if (!currentTask) return;
+      const wordToSay = currentTask.spoken || currentTask.word;
+      speakText(`${wordToSay} ${currentTask.hint}`, 0.96);
+    }
+
+    // Enkle, muntre lydeffekter med Web Audio API (krever ingen eksterne lydfiler)
+    let audioCtx = null;
+    function playTone(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+
+        if (type === 'pop') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(420, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'success') {
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.08 + 0.22);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.24);
+          });
+        } else if (type === 'gentle_oops') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.linearRampToValueAtTime(220, now + 0.22);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      } catch (e) {
+        // Ignorer hvis nettleser blokkerer lyd før interaksjon
+      }
+    }
+
+    /* ==========================================================================
+       7. BRYTER FOR VERSALER / SMÅ BOKSTAVER (ABC / abc) OG VOKAL/KONSONANT-SJEKK
+       ========================================================================== */
+    const NORWEGIAN_VOWELS = ['A', 'E', 'I', 'O', 'U', 'Y', 'Æ', 'Ø', 'Å'];
+
+    function isNorwegianVowel(ch) {
+      if (!ch || ch.length !== 1) return false;
+      return NORWEGIAN_VOWELS.includes(ch.toUpperCase());
+    }
+
+    function formatCase(str) {
+      if (!str) return '';
+      return state.useLowercase ? str.toLowerCase() : str.toUpperCase();
+    }
+
+    function formatSentenceCase(str) {
+      if (!str) return '';
+      return state.useLowercase ? str.toLowerCase() : str.toUpperCase();
+    }
+
+    function toggleLetterCase() {
+      state.useLowercase = !state.useLowercase;
+      playTone('pop');
+      saveState();
+      updateCaseUI();
+
+      // Oppdater aktiv oppgave eller visning øyeblikkelig
+      if (currentView === 'game' && currentTask) {
+        renderActiveTask(false);
+      } else if (currentView === 'trophies') {
+        renderTrophyRoom();
+      } else if (currentView === 'writer') {
+        renderWriterKeyboard();
+        applyWriterCaseTransform();
+      } else if (currentView === 'grapho') {
+        renderGraphoOptions();
+      }
+    }
+
+    function updateCaseUI() {
+      const btn = document.getElementById('btn-case-toggle');
+      if (btn) {
+        btn.textContent = state.useLowercase ? 'abc' : 'ABC';
+      }
+
+      const portalLabel = document.getElementById('portal-case-label');
+      if (portalLabel) {
+        portalLabel.textContent = state.useLowercase ? 'abc (små)' : 'ABC (STORE)';
+      }
+
+      // Oppdater statiske eksempelord med klassen .case-dynamic
+      document.querySelectorAll('.case-dynamic').forEach(el => {
+        if (!el.dataset.orig) el.dataset.orig = el.textContent;
+        el.textContent = state.useLowercase
+          ? el.dataset.orig.toLowerCase()
+          : el.dataset.orig.toUpperCase();
+      });
+    }
+
+    /* ==========================================================================
+       8. NAVIGASJON, PEDAGOGISK MODAL OG PROGRESJONSMÅLERE
+       ========================================================================== */
+    function openPedagogyModal(topic = 'overview') {
+      const titleEl = document.getElementById('pedagogy-modal-title');
+      const bodyEl = document.getElementById('pedagogy-modal-body');
+      if (!titleEl || !bodyEl) return;
+
+      ['overview', 'ordhelten', 'lydboka', 'ordjakten'].forEach(t => {
+        const tabBtn = document.getElementById(`ped-tab-${t}`);
+        if (tabBtn) {
+          tabBtn.className = (t === topic)
+            ? 'px-3 py-1.5 rounded-xl font-extrabold text-xs bg-slate-800 text-white shadow-sm'
+            : 'px-3 py-1.5 rounded-xl font-extrabold text-xs bg-slate-100 text-slate-700 hover:bg-slate-200';
+        }
+      });
+
+      if (topic === 'ordhelten') {
+        titleEl.textContent = '🦸‍♂️ Ordhelten – Hva oppgavene trener';
+        bodyEl.innerHTML = `
+          <div class="bg-sky-50 p-3.5 rounded-2xl border border-sky-200 space-y-1.5">
+            <div class="font-black text-sky-950">Pedagogisk oppbygning (Aski Raski- og PokéMath-inspirert)</div>
+            <p>Ordhelten kombinerer <strong>leseforståelse av enkeltord (Ord-til-bilde)</strong> og <strong>fonologisk/ortografisk staving (Bygg ordet)</strong> med røde vokaler og blå konsonanter.</p>
+          </div>
+          <div class="space-y-2">
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>🌱 Løype 1 – Lydrette småord (2–4 bokstaver):</strong> Sikrer lydrett syntese av høyfrekvente ord (<em>SOL, BIL, HUS, REV</em>).
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>🚀 Løype 2 – Minimalpar og dobbel konsonant:</strong> Trener skille mellom lang og kort vokal (<em>BAKE vs. BAKKE, TAK vs. TAKK, PEN vs. PENN</em>).
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>👑 Løype 3 – Sammensatte grafemer:</strong> Trener ortografiske mønstre som <em>KJ, SKJ, SJ, HJ, STJ</em> og <em>GN</em> (<em>KJOLE, SKJOLD, HJERTE, REGN</em>).
+            </div>
+          </div>
+          <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200 text-xs">
+            <strong>💡 Metodikkgrep:</strong> I «Les ord» er talestøtten skjult de første 10 sekundene slik at eleven må avkode selv før en hjelpehøyttaler dukker opp. Ved feil svar sendes eleven ett steg tilbake til forrige løste oppgave for å hindre blind gjetting.
+          </div>
+        `;
+      } else if (topic === 'lydboka') {
+        titleEl.textContent = '📖 LydBoka – Hva oppgavene trener';
+        bodyEl.innerHTML = `
+          <div class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-1.5">
+            <div class="font-black text-emerald-950">Skrive seg til lesing med auditiv tilbakemelding (STL+ / Book Creator)</div>
+            <p>Når eleven trykker <strong>mellomrom</strong>, leser talesyntesen hele det skrevne ordet høyt. Ved <strong>punktum/utropstegn</strong> leses hele setningen. Dette gir eleven umiddelbar mulighet til å høre om ordet ble stavet slik de tenkte.</p>
+          </div>
+          <div class="space-y-2">
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>🐱 Løype 1 – Enkeltord til bilde:</strong> Lav terskel for begynnertrinnet. Eleven velger klistremerke/bilde og skriver enkeltord.
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>✍️ Løype 2 – Setningsstartere:</strong> Boksiden fylles med en ferdig setningsstart (f.eks. <em>«HER ER EN ...»</em>) som eleven fullfører.
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>📚 Løype 3 – Min bok:</strong> Fri skriving over flere sider med fargevalg, illustrasjoner og opplesning av hele boka.
+            </div>
+          </div>
+        `;
+      } else if (topic === 'ordjakten') {
+        titleEl.textContent = '🎧 OrdJakten – Hva oppgavene trener';
+        bodyEl.innerHTML = `
+          <div class="bg-purple-50 p-3.5 rounded-2xl border border-purple-200 space-y-1.5">
+            <div class="font-black text-purple-950">Intensiv mengdetrening og umiddelbar korrigering (GraphoGame-prinsipp)</div>
+            <p>Ved feil trykk dempes feilalternativene umiddelbart mens riktig brikke lyser opp. Eleven må selv trykke på den opplyste, riktige brikken for å gå videre – slik at øye og hånd alltid lagrer riktig ortografisk kobling.</p>
+          </div>
+          <div class="space-y-2">
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>🖼️ Løype 1 – Førstebokstav uten lyd:</strong> Eleven ser bilde og ordmaske (☀️ <em>_ O L</em>) uten lydstøtte og må isolere framlyden selv.
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>🌱 Løype 2 – Korte lydrette ord:</strong> Skille nærliggende småord (f.eks. <em>SOL vs. SIL, SAL, BOL</em>).
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>🚀 Løype 3 – Minimalpar:</strong> Hurtig gjenkjenning av kort vs. lang vokal (<em>BAKKE vs. BAKE</em>).
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-50 border">
+              <strong>👑 Løype 4 – Sammensatte grafemer:</strong> Hurtig ortografisk avkoding av <em>KJ, SKJ, SJ, HJ, NG, GN</em>.
+            </div>
+          </div>
+        `;
+      } else {
+        titleEl.textContent = '🇳🇴 Oversikt over Lese- og Skriveportalen';
+        bodyEl.innerHTML = `
+          <p>Portalen er laget for begynneropplæring og intensiv lesetrening på PC og iPad, helt uten tekststøy på elevens skjermflater.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="p-3 rounded-2xl bg-sky-50 border border-sky-200">
+              <div class="font-black text-sky-950 mb-1">🦸‍♂️ Ordhelten</div>
+              <p class="text-xs">Ord-til-bilde og ordbygging med bokstavbrikker, samleegg hver 5. stjerne og minispill hver 10. stjerne.</p>
+            </div>
+            <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+              <div class="font-black text-emerald-950 mb-1">📖 LydBoka</div>
+              <p class="text-xs">Skriveverksted med opplesning av ord ved mellomrom, setning ved punktum og skjermtastatur med vokal/konsonant-farger.</p>
+            </div>
+            <div class="p-3 rounded-2xl bg-purple-50 border border-purple-200">
+              <div class="font-black text-purple-950 mb-1">🎧 OrdJakten</div>
+              <p class="text-xs">4 løyper med visuell framlydsanalyse og hurtig ordgjenkjenning av minimalpar og grafemer.</p>
+            </div>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-2xl border text-xs space-y-1">
+            <div><strong>🔤 ABC / abc-bryter:</strong> Bytt mellom VERSALER og små bokstaver når som helst i toppmenyen.</div>
+            <div><strong>🔴🔵 Fargekoding:</strong> Enkeltbokstaver har røde vokaler og blå konsonanter. Hele ord har nøytral farge for å fremme helordslesing.</div>
+            <div><strong>⛏️ Minecraft-oppdrag:</strong> Nivådelte leseoppdrag der elevene kan bygge i Minecraft og laste opp skjermbilde lokalt på iPaden.</div>
+          </div>
+        `;
+      }
+
+      document.getElementById('modal-pedagogy').classList.remove('hidden');
+      playTone('pop');
+    }
+
+    function closePedagogyModal() {
+      document.getElementById('modal-pedagogy').classList.add('hidden');
+    }
+
+    function updateTopBarUI() {
+      const starsEl = document.getElementById('stat-stars');
+      if (starsEl) starsEl.textContent = state.stars;
+
+      // Egg-progresjon (hver 5. stjerne)
+      const eggMod = state.stars % 5;
+      const eggPct = (eggMod / 5) * 100;
+      const barEgg = document.getElementById('bar-egg');
+      if (barEgg) barEgg.style.width = `${eggPct}%`;
+      const statEgg = document.getElementById('stat-egg-progress');
+      if (statEgg) statEgg.textContent = `${eggMod}/5`;
+
+      // Minispill-progresjon (hver 10. stjerne)
+      const mcMod = state.stars % 10;
+      const mcPct = (mcMod / 10) * 100;
+      const barMc = document.getElementById('bar-mc');
+      if (barMc) barMc.style.width = `${mcPct}%`;
+      const statMc = document.getElementById('stat-mc-progress');
+      if (statMc) statMc.textContent = `${mcMod}/10`;
+
+      // Badges på Album og Troférom
+      const albumBadge = document.getElementById('badge-album-count');
+      if (albumBadge) albumBadge.textContent = `${state.unlockedMonsters.length}/${MONSTER_CATALOG.length}`;
+      const trophyBadge = document.getElementById('badge-trophy-count');
+      if (trophyBadge) trophyBadge.textContent = `${state.unlockedMissions.length}`;
+    }
+
+    function showView(viewName) {
+      if (viewName === 'gameOrHome') {
+        viewName = lastGameOrHome;
+      }
+      currentView = viewName;
+      if (viewName === 'portal' || viewName === 'home' || viewName === 'game') {
+        lastGameOrHome = viewName;
+      }
+
+      ['portal', 'home', 'writerHub', 'graphoHub', 'game', 'album', 'trophies', 'writer', 'grapho'].forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.toggle('hidden', v !== viewName);
+      });
+
+      // Vis/skjul "Ordhelten"-løypeknapp når man er inne i selve Ordhelten-spillbrettet
+      const homeBtn = document.getElementById('btn-home');
+      if (homeBtn) {
+        homeBtn.classList.toggle('hidden', viewName !== 'game');
+      }
+
+      const levelBadge = document.getElementById('active-level-badge');
+      if (viewName === 'game') {
+        levelBadge.classList.remove('hidden');
+        levelBadge.classList.add('flex');
+      } else {
+        levelBadge.classList.remove('flex');
+        levelBadge.classList.add('hidden');
+      }
+
+      if (viewName === 'album') renderAlbum();
+      if (viewName === 'trophies') renderTrophyRoom();
+      if (viewName === 'writer') initWriterView();
+      if (viewName === 'grapho') initGraphoView();
+    }
+
+    function setTaskMode(mode) {
+      state.taskMode = mode;
+      saveState();
+      updateModeButtonsUI();
+    }
+
+    function updateModeButtonsUI() {
+      const modes = ['mixed', 'word2pic', 'build'];
+      modes.forEach(m => {
+        const btn = document.getElementById(`mode-${m}`);
+        if (!btn) return;
+        if (state.taskMode === m) {
+          btn.className = 'px-2.5 py-1 rounded-lg font-extrabold text-xs sm:text-sm bg-white text-sky-700 shadow-sm';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg font-extrabold text-xs sm:text-sm text-slate-600';
+        }
+      });
+    }
+
+    /* ==========================================================================
+       9. SPILLMOTOR: NIVÅSTART, KØ-HÅNDTERING OG OPPGAVEGENERERING
+       ========================================================================== */
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function startLevel(levelNum) {
+      state.currentLevel = levelNum;
+      saveState();
+
+      const icons = { 1: '🌱', 2: '🚀', 3: '👑' };
+      document.getElementById('badge-level-icon').textContent = icons[levelNum] || '🌱';
+      document.getElementById('badge-level-text').textContent = `Nivå ${levelNum}`;
+
+      lastSolvedTask = null;
+      buildFreshQueue(levelNum);
+      showView('game');
+      nextTask();
+    }
+
+    function buildFreshQueue(levelNum) {
+      const wordsForLevel = shuffleArray(WORD_BANK.filter(w => w.level === levelNum));
+      taskQueue = wordsForLevel.map((item, idx) => {
+        let taskType = state.taskMode;
+        if (taskType === 'mixed') {
+          taskType = idx % 2 === 0 ? 'word2pic' : 'build';
+        }
+        return {
+          ...item,
+          taskType,
+          isRetry: false
+        };
+      });
+    }
+
+    function nextTask() {
+      isTransitioning = false;
+      if (taskQueue.length === 0) {
+        buildFreshQueue(state.currentLevel);
+      }
+
+      currentTask = taskQueue.shift();
+
+      // Hvis brukeren har endret oppgavemodus midt i spillet, respekter det:
+      if (state.taskMode !== 'mixed') {
+        currentTask.taskType = state.taskMode;
+      }
+
+      prepareTaskData(currentTask);
+      renderActiveTask(true);
+    }
+
+    // Klargjør distraktorer (både for Ord-til-bilde og Bygg-ordet)
+    function prepareTaskData(task) {
+      // 1. Klargjør 3 bildevalg for Ord-til-bilde
+      let distractors = Array.isArray(task.distractorEmojis) ? [...task.distractorEmojis] : [];
+      if (distractors.length < 2) {
+        const otherEmojis = WORD_BANK
+          .filter(w => w.emoji !== task.emoji)
+          .map(w => w.emoji);
+        const picked = shuffleArray(otherEmojis).slice(0, 2 - distractors.length);
+        distractors = [...distractors, ...picked];
+      }
+
+      // Finn tilhørende ord-etikett hvis distraktoren finnes i WORD_BANK (nyttig for minimalpar)
+      const optionObjects = [
+        { emoji: task.emoji, isCorrect: true },
+        { emoji: distractors[0], isCorrect: false },
+        { emoji: distractors[1], isCorrect: false }
+      ];
+      task.preparedOptions = shuffleArray(optionObjects);
+
+      // 2. Klargjør bokstavbrikker (Målordets bokstaver + 3 smarte distraktorbokstaver)
+      const targetLetters = task.word.toUpperCase().split('');
+      const fallbackPool = ['K', 'S', 'J', 'O', 'Å', 'L', 'N', 'R', 'T', 'E', 'P', 'B'];
+      let extraLetters = Array.isArray(task.distractorLetters) ? [...task.distractorLetters] : [];
+
+      if (extraLetters.length < 3) {
+        const candidates = shuffleArray(fallbackPool).filter(l => !extraLetters.includes(l));
+        extraLetters = [...extraLetters, ...candidates.slice(0, 3 - extraLetters.length)];
+      } else {
+        extraLetters = extraLetters.slice(0, 3);
+      }
+
+      const combinedLetters = [...targetLetters, ...extraLetters];
+      currentTilePool = shuffleArray(combinedLetters).map((letter, idx) => ({
+        id: `tile_${idx}_${letter}`,
+        letter: letter,
+        used: false
+      }));
+
+      placedLetters = [];
+    }
+
+    function renderActiveTask(shouldAutoSpeak = false) {
+      if (!currentTask) return;
+
+      // Stopp eventuell aktiv 10-sekunders nedtelling fra forrige oppgave
+      if (audioHelpTimer) {
+        clearTimeout(audioHelpTimer);
+        audioHelpTimer = null;
+      }
+
+      // Vis/skjul øve-merke
+      const retryBadge = document.getElementById('game-retry-badge');
+      retryBadge.classList.toggle('hidden', !currentTask.isRetry);
+
+      const arenaW2P = document.getElementById('arena-word2pic');
+      const arenaBuild = document.getElementById('arena-build');
+      const topAudioControls = document.getElementById('top-audio-controls');
+
+      if (currentTask.taskType === 'word2pic') {
+        document.getElementById('game-task-badge').textContent = '🖼️';
+        arenaW2P.classList.remove('hidden');
+        arenaBuild.classList.add('hidden');
+
+        // Ved "Ord-til-bilde" skal eleven lese selv først (ingen opplesning ved start).
+        if (shouldAutoSpeak) {
+          isAudioHelpUnlocked = false;
+          topAudioControls.classList.add('hidden');
+          audioHelpTimer = setTimeout(() => {
+            unlockWordToPicAudioHelp();
+          }, 10000);
+        }
+
+        renderWordToPicArena();
+        setFeedback('👀', '', 'neutral');
+      } else {
+        document.getElementById('game-task-badge').textContent = '🔤';
+        arenaW2P.classList.add('hidden');
+        arenaBuild.classList.remove('hidden');
+
+        // Ved "Bygg ordet" ser eleven kun bildet, så her er lydhjelp alltid aktiv
+        isAudioHelpUnlocked = true;
+        topAudioControls.classList.remove('hidden');
+
+        renderBuildWordArena();
+        setFeedback('👂', '', 'neutral');
+
+        if (shouldAutoSpeak && state.autoSpeak) {
+          setTimeout(() => {
+            speakCurrentWord(false);
+          }, 220);
+        }
+      }
+    }
+
+    // Låser opp den lille høyttalerknappen etter 10 sekunder på "Ord-til-bilde"
+    function unlockWordToPicAudioHelp() {
+      isAudioHelpUnlocked = true;
+      const delayedSpeaker = document.getElementById('w2p-delayed-speaker');
+      const topAudioControls = document.getElementById('top-audio-controls');
+      const targetEl = document.getElementById('w2p-target-word');
+
+      if (delayedSpeaker) delayedSpeaker.classList.remove('hidden');
+      if (topAudioControls) topAudioControls.classList.remove('hidden');
+      if (targetEl) targetEl.classList.add('cursor-pointer', 'hover:text-sky-600');
+    }
+
+    function handleWordCardClick() {
+      if (isAudioHelpUnlocked) {
+        speakCurrentWord(false);
+      }
+    }
+
+    /* ==========================================================================
+       10. RENDERING AV OPPGAVETYPE 1: ORD-TIL-BILDE
+       ========================================================================== */
+    function renderWordToPicArena() {
+      const targetEl = document.getElementById('w2p-target-word');
+      targetEl.textContent = formatCase(currentTask.word);
+
+      const delayedSpeaker = document.getElementById('w2p-delayed-speaker');
+
+      if (isAudioHelpUnlocked) {
+        delayedSpeaker.classList.remove('hidden');
+        targetEl.classList.add('cursor-pointer', 'hover:text-sky-600');
+      } else {
+        delayedSpeaker.classList.add('hidden');
+        targetEl.classList.remove('cursor-pointer', 'hover:text-sky-600');
+      }
+
+      const container = document.getElementById('w2p-options');
+      container.innerHTML = '';
+
+      currentTask.preparedOptions.forEach((opt) => {
+        const btn = document.createElement('button');
+        btn.className = 'tile-3d bg-white hover:bg-sky-50 border-4 border-slate-200 hover:border-sky-400 rounded-3xl p-4 sm:p-7 flex flex-col items-center justify-center gap-2 transition-all min-h-[125px] sm:min-h-[165px]';
+        btn.innerHTML = `
+          <span class="text-6xl sm:text-7xl md:text-8xl leading-none select-none">${opt.emoji}</span>
+        `;
+        btn.onclick = () => handleWordToPicChoice(opt, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function handleWordToPicChoice(opt, btnElement) {
+      if (isTransitioning) return;
+
+      if (opt.isCorrect) {
+        isTransitioning = true;
+        if (audioHelpTimer) {
+          clearTimeout(audioHelpTimer);
+          audioHelpTimer = null;
+        }
+        btnElement.className = 'tile-3d bg-emerald-100 border-4 border-emerald-500 rounded-3xl p-4 sm:p-7 flex flex-col items-center justify-center gap-2 min-h-[125px] sm:min-h-[165px] scale-105';
+        handleCorrectAnswer();
+      } else {
+        // VED FEIL SVAR: Lås brettet umiddelbart så barnet ikke bare kan gjette på neste bilde,
+        // og send barnet tilbake til forrige løste oppgave!
+        isTransitioning = true;
+        if (audioHelpTimer) {
+          clearTimeout(audioHelpTimer);
+          audioHelpTimer = null;
+        }
+        playTone('gentle_oops');
+        btnElement.classList.add('animate-shake', 'bg-rose-100', 'border-rose-400');
+        handleWrongAnswerStepBack();
+      }
+    }
+
+    /* ==========================================================================
+       11. RENDERING AV OPPGAVETYPE 2: BYGG ORDET (Røde vokaler, blå konsonanter)
+       ========================================================================== */
+    function renderBuildWordArena() {
+      document.getElementById('build-emoji').textContent = currentTask.emoji;
+      renderBuildSlotsAndTiles();
+    }
+
+    function renderBuildSlotsAndTiles() {
+      const targetLen = currentTask.word.length;
+      const slotsContainer = document.getElementById('build-slots');
+      slotsContainer.innerHTML = '';
+
+      for (let i = 0; i < targetLen; i++) {
+        const placedObj = placedLetters[i];
+        const slotBtn = document.createElement('button');
+
+        if (placedObj) {
+          const isVowel = isNorwegianVowel(placedObj.letter);
+          const colorClasses = isVowel
+            ? 'bg-rose-600 text-white border-rose-300'
+            : 'bg-sky-600 text-white border-sky-300';
+          slotBtn.className = `tile-3d reading-font w-12 h-14 sm:w-16 sm:h-20 rounded-2xl ${colorClasses} font-black text-2xl sm:text-4xl border-4 flex items-center justify-center`;
+          slotBtn.textContent = formatCase(placedObj.letter);
+          slotBtn.title = 'Trykk for å fjerne bokstaven';
+          slotBtn.onclick = () => removePlacedLetterAt(i);
+        } else {
+          slotBtn.className = 'reading-font w-12 h-14 sm:w-16 sm:h-20 rounded-2xl bg-white/90 border-4 border-dashed border-slate-300 text-slate-300 font-black text-2xl sm:text-4xl flex items-center justify-center';
+          slotBtn.textContent = '';
+          slotBtn.disabled = true;
+        }
+        slotsContainer.appendChild(slotBtn);
+      }
+
+      // Render bokstavbrikker nederst (Vokaler = Røde, Konsonanter = Blå)
+      const tilesContainer = document.getElementById('build-tiles');
+      tilesContainer.innerHTML = '';
+
+      currentTilePool.forEach((tile) => {
+        const tileBtn = document.createElement('button');
+        if (tile.used) {
+          tileBtn.className = 'reading-font w-12 h-14 sm:w-16 sm:h-20 rounded-2xl bg-slate-200/50 border-2 border-slate-200 text-transparent font-black text-2xl sm:text-4xl flex items-center justify-center pointer-events-none';
+          tileBtn.textContent = formatCase(tile.letter);
+          tileBtn.disabled = true;
+        } else {
+          const isVowel = isNorwegianVowel(tile.letter);
+          const tileColors = isVowel
+            ? 'bg-rose-50 hover:bg-rose-100 border-rose-500 text-rose-700'
+            : 'bg-sky-50 hover:bg-sky-100 border-sky-500 text-sky-800';
+          tileBtn.className = `tile-3d reading-font w-12 h-14 sm:w-16 sm:h-20 rounded-2xl ${tileColors} border-4 font-black text-2xl sm:text-4xl flex items-center justify-center`;
+          tileBtn.textContent = formatCase(tile.letter);
+          tileBtn.onclick = () => selectLetterTile(tile.id);
+        }
+        tilesContainer.appendChild(tileBtn);
+      });
+    }
+
+    function selectLetterTile(tileId) {
+      if (isTransitioning) return;
+      const targetLen = currentTask.word.length;
+      if (placedLetters.length >= targetLen) return;
+
+      const tile = currentTilePool.find(t => t.id === tileId && !t.used);
+      if (!tile) return;
+
+      playTone('pop');
+      tile.used = true;
+      placedLetters.push(tile);
+      renderBuildSlotsAndTiles();
+
+      // Sjekk automatisk når alle luker er fylt (leser kun hele ordet til slutt, ingen enkeltfonemer)
+      if (placedLetters.length === targetLen) {
+        checkBuiltWord();
+      }
+    }
+
+    function removePlacedLetterAt(slotIndex) {
+      if (isTransitioning) return;
+      const removed = placedLetters.splice(slotIndex, 1)[0];
+      if (removed) {
+        playTone('pop');
+        const originTile = currentTilePool.find(t => t.id === removed.id);
+        if (originTile) originTile.used = false;
+        renderBuildSlotsAndTiles();
+      }
+    }
+
+    function clearPlacedLetters() {
+      if (isTransitioning || placedLetters.length === 0) return;
+      playTone('pop');
+      placedLetters = [];
+      currentTilePool.forEach(t => { t.used = false; });
+      renderBuildSlotsAndTiles();
+    }
+
+    function checkBuiltWord() {
+      const built = placedLetters.map(t => t.letter).join('').toUpperCase();
+      const target = currentTask.word.toUpperCase();
+
+      if (built === target) {
+        isTransitioning = true;
+        handleCorrectAnswer();
+      } else {
+        isTransitioning = true;
+        playTone('gentle_oops');
+        const slotsEl = document.getElementById('build-slots');
+        slotsEl.classList.add('animate-shake');
+        setTimeout(() => slotsEl.classList.remove('animate-shake'), 500);
+        handleWrongAnswerStepBack();
+      }
+    }
+
+    function setFeedback(icon, message, tone = 'neutral') {
+      const bar = document.getElementById('feedback-bar');
+      const iconEl = document.getElementById('feedback-icon');
+      const msgEl = document.getElementById('feedback-message');
+      if (!bar || !iconEl || !msgEl) return;
+
+      iconEl.textContent = icon;
+      msgEl.textContent = message;
+
+      if (tone === 'success') {
+        bar.className = 'h-12 rounded-2xl bg-emerald-100 border-2 border-emerald-400 px-4 flex items-center justify-center gap-3 shrink-0 transition-all';
+        msgEl.className = 'reading-font font-black text-emerald-900 text-lg sm:text-xl tracking-wider';
+      } else if (tone === 'error') {
+        bar.className = 'h-12 rounded-2xl bg-rose-100 border-2 border-rose-300 px-4 flex items-center justify-center gap-3 shrink-0 transition-all';
+        msgEl.className = 'reading-font font-black text-rose-800 text-lg sm:text-xl tracking-wider';
+      } else {
+        bar.className = 'h-12 rounded-2xl bg-white/70 border-2 border-slate-200 px-4 flex items-center justify-center gap-3 shrink-0 transition-all';
+        msgEl.className = 'reading-font font-black text-slate-700 text-lg sm:text-xl tracking-wider';
+      }
+    }
+
+    function handleCorrectAnswer() {
+      playTone('success');
+      fireConfetti();
+      setFeedback('🌟', formatCase(currentTask.word), 'success');
+
+      // Bekreft ordet med talesyntese når barnet har svart riktig
+      speakCurrentWord(false);
+
+      // Lagre som siste løste oppgave (slik at vi kan gå tilbake hit ved feil på neste)
+      lastSolvedTask = {
+        ...currentTask,
+        isRetry: false
+      };
+
+      state.stars += 1;
+      saveState();
+
+      setTimeout(() => {
+        if (state.stars % 10 === 0) {
+          openMinigameModal();
+        } else if (state.stars % 5 === 0) {
+          triggerEggReward();
+        } else {
+          nextTask();
+        }
+      }, 1150);
+    }
+
+    // Ved feil svar sendes eleven tilbake til forrige løste oppgave før det feilede ordet kommer på nytt
+    function handleWrongAnswerStepBack() {
+      setFeedback('⏪', '', 'error');
+
+      const failedCopy = {
+        ...currentTask,
+        isRetry: true
+      };
+
+      // Legg nåværende oppgave tilbake fremst i køen
+      taskQueue.unshift(failedCopy);
+
+      // Hvis vi har en tidligere løst oppgave, legg den aller først slik at eleven må løse den på nytt først
+      if (lastSolvedTask && lastSolvedTask.word !== currentTask.word) {
+        taskQueue.unshift({
+          ...lastSolvedTask,
+          isRetry: true
+        });
+      } else if (taskQueue.length > 1) {
+        // Hvis dette var aller første oppgave, bytt plass med neste oppgave så man ikke kan gjette videre
+        constfirst = taskQueue.shift();
+        const second = taskQueue.shift();
+        taskQueue.unshift(constfirst);
+        taskQueue.unshift(second);
+      }
+
+      setTimeout(() => {
+        nextTask();
+      }, 900);
+    }
+
+    /* ==========================================================================
+       12. SAMLEALBUM & EGG-KLEKKING (SVG-monstre)
+       ========================================================================== */
+    function createEggSVG() {
+      return `
+        <svg viewBox="0 0 140 160" class="w-36 h-40 sm:w-44 sm:h-48 animate-egg drop-shadow-xl">
+          <defs>
+            <linearGradient id="eggGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#f472b6" />
+              <stop offset="50%" stop-color="#a855f7" />
+              <stop offset="100%" stop-color="#6366f1" />
+            </linearGradient>
+          </defs>
+          <path d="M70 12 C32 12 18 68 18 104 C18 138 42 152 70 152 C98 152 122 138 122 104 C122 68 108 12 70 12 Z" fill="url(#eggGrad)" stroke="#ffffff" stroke-width="6"/>
+          <circle cx="50" cy="65" r="10" fill="#fde047" opacity="0.85"/>
+          <circle cx="92" cy="85" r="13" fill="#67e8f9" opacity="0.85"/>
+          <circle cx="55" cy="115" r="8" fill="#fde047" opacity="0.85"/>
+        </svg>
+      `;
+    }
+
+    function createMonsterSVG(monster, sizeClass = 'w-28 h-28') {
+      const c1 = monster.color1 || '#38bdf8';
+      const c2 = monster.color2 || '#0284c7';
+      const gradId = `grad_${monster.id}_${Math.random().toString(36).slice(2, 6)}`;
+
+      let topDecor = '';
+      if (monster.horns === 'horns') {
+        topDecor = `<path d="M35 32 L20 10 L48 25 Z" fill="#fde047"/><path d="M105 32 L120 10 L92 25 Z" fill="#fde047"/>`;
+      } else if (monster.horns === 'crown') {
+        topDecor = `<polygon points="45,28 55,8 70,22 85,8 95,28" fill="#facc15" stroke="#ca8a04" stroke-width="3"/>`;
+      } else if (monster.horns === 'antenna') {
+        topDecor = `<line x1="70" y1="25" x2="70" y2="6" stroke="${c2}" stroke-width="6" stroke-linecap="round"/><circle cx="70" cy="6" r="7" fill="#fde047"/>`;
+      } else {
+        topDecor = `<circle cx="36" cy="26" r="14" fill="${c2}"/><circle cx="104" cy="26" r="14" fill="${c2}"/>`;
+      }
+
+      let eyes = '';
+      if (monster.eyeType === 'double') {
+        eyes = `
+          <circle cx="48" cy="62" r="11" fill="#fff"/><circle cx="48" cy="62" r="5" fill="#1e293b"/>
+          <circle cx="70" cy="54" r="9" fill="#fff"/><circle cx="70" cy="54" r="4" fill="#1e293b"/>
+          <circle cx="92" cy="62" r="11" fill="#fff"/><circle cx="92" cy="62" r="5" fill="#1e293b"/>
+        `;
+      } else if (monster.eyeType === 'wink') {
+        eyes = `
+          <circle cx="50" cy="64" r="12" fill="#fff"/><circle cx="52" cy="64" r="6" fill="#1e293b"/>
+          <path d="M80 64 Q92 54 102 64" stroke="#1e293b" stroke-width="5" fill="none" stroke-linecap="round"/>
+        `;
+      } else {
+        eyes = `
+          <circle cx="50" cy="64" r="13" fill="#fff"/><circle cx="52" cy="64" r="6.5" fill="#1e293b"/><circle cx="49" cy="61" r="2.5" fill="#fff"/>
+          <circle cx="90" cy="64" r="13" fill="#fff"/><circle cx="88" cy="64" r="6.5" fill="#1e293b"/><circle cx="85" cy="61" r="2.5" fill="#fff"/>
+        `;
+      }
+
+      return `
+        <svg viewBox="0 0 140 140" class="${sizeClass} animate-float drop-shadow-md">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${c1}" />
+              <stop offset="100%" stop-color="${c2}" />
+            </linearGradient>
+          </defs>
+          ${topDecor}
+          <rect x="22" y="24" width="96" height="92" rx="44" fill="url(#${gradId})" stroke="#ffffff" stroke-width="5"/>
+          <ellipse cx="70" cy="95" rx="28" ry="16" fill="#ffffff" opacity="0.28"/>
+          ${eyes}
+          <path d="M54 88 Q70 102 86 88" stroke="#1e293b" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <ellipse cx="38" cy="116" rx="12" ry="7" fill="${c2}"/>
+          <ellipse cx="102" cy="116" rx="12" ry="7" fill="${c2}"/>
+        </svg>
+      `;
+    }
+
+    function triggerEggReward() {
+      const locked = MONSTER_CATALOG.filter(m => !state.unlockedMonsters.includes(m.id));
+      pendingEggMonster = locked.length > 0
+        ? locked[Math.floor(Math.random() * locked.length)]
+        : MONSTER_CATALOG[Math.floor(Math.random() * MONSTER_CATALOG.length)];
+
+      eggCracked = false;
+      document.getElementById('egg-modal-title').textContent = 'Du fant et mystisk egg!';
+      document.getElementById('egg-modal-subtitle').textContent = 'Trykk på egget for å klekke det!';
+      document.getElementById('egg-stage').innerHTML = createEggSVG();
+      document.getElementById('egg-creature-info').classList.add('hidden');
+      document.getElementById('btn-egg-close').classList.add('hidden');
+      document.getElementById('modal-egg').classList.remove('hidden');
+      playTone('pop');
+    }
+
+    function crackEggNow() {
+      if (eggCracked || !pendingEggMonster) return;
+      eggCracked = true;
+
+      if (!state.unlockedMonsters.includes(pendingEggMonster.id)) {
+        state.unlockedMonsters.push(pendingEggMonster.id);
+        saveState();
+      }
+
+      playTone('success');
+      fireConfetti();
+
+      document.getElementById('egg-modal-title').textContent = 'Egget klekket!';
+      document.getElementById('egg-modal-subtitle').textContent = 'Se hvem som gjemte seg inni:';
+      document.getElementById('egg-stage').innerHTML = createMonsterSVG(pendingEggMonster, 'w-36 h-36 sm:w-44 sm:h-44');
+
+      document.getElementById('egg-creature-rarity').textContent = `${pendingEggMonster.rarity} • Nivå ${pendingEggMonster.level}`;
+      document.getElementById('egg-creature-name').textContent = pendingEggMonster.name;
+      document.getElementById('egg-creature-desc').textContent = pendingEggMonster.desc;
+      document.getElementById('egg-creature-info').classList.remove('hidden');
+      document.getElementById('btn-egg-close').classList.remove('hidden');
+
+      speakText(`${pendingEggMonster.name}! ${pendingEggMonster.desc}`, 0.96);
+    }
+
+    function closeEggModal() {
+      document.getElementById('modal-egg').classList.add('hidden');
+      if (currentView === 'game') {
+        nextTask();
+      }
+    }
+
+    function renderAlbum() {
+      const grid = document.getElementById('album-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      MONSTER_CATALOG.forEach(monster => {
+        const isUnlocked = state.unlockedMonsters.includes(monster.id);
+        const card = document.createElement('div');
+
+        if (isUnlocked) {
+          card.className = 'tile-3d bg-gradient-to-b from-white to-purple-50 border-4 border-purple-300 rounded-3xl p-3.5 flex flex-col items-center text-center justify-between cursor-pointer';
+          card.innerHTML = `
+            <span class="text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">${monster.rarity}</span>
+            <div class="my-2">${createMonsterSVG(monster, 'w-24 h-24')}</div>
+            <div>
+              <div class="font-black text-slate-800 text-sm sm:text-base">${monster.name}</div>
+              <div class="text-xs text-slate-600 mt-0.5 line-clamp-2">${monster.desc}</div>
+            </div>
+          `;
+          card.onclick = () => speakText(`${monster.name}. ${monster.desc}`);
+        } else {
+          card.className = 'bg-slate-100/80 border-4 border-dashed border-slate-300 rounded-3xl p-3.5 flex flex-col items-center justify-center text-center opacity-75 min-h-[180px]';
+          card.innerHTML = `
+            <div class="text-4xl mb-2 opacity-40">🥚</div>
+            <div class="font-black text-slate-500 text-sm">Hemmelig figur</div>
+            <div class="text-xs text-slate-400 mt-0.5">Klekkes etter 5 stjerner</div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+    }
+
+    /* ==========================================================================
+       13. TROFÉROM OG MINECRAFT-SKJERMBILDER (Canvas-komprimering + IndexedDB)
+       ========================================================================== */
+    async function renderTrophyRoom() {
+      const grid = document.getElementById('trophy-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const savedImages = await getAllScreenshotsFromDB();
+
+      MINECRAFT_MISSIONS.forEach(mission => {
+        const screenshotUrl = savedImages[mission.id] || null;
+        const card = document.createElement('div');
+        card.className = 'bg-white border-4 border-emerald-200 rounded-3xl p-4 shadow-sm flex flex-col justify-between gap-3';
+
+        const levelColors = {
+          1: 'bg-emerald-100 text-emerald-800',
+          2: 'bg-amber-100 text-amber-800',
+          3: 'bg-purple-100 text-purple-800'
+        };
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-black uppercase px-2.5 py-1 rounded-full ${levelColors[mission.level] || 'bg-slate-100'}">
+                Nivå ${mission.level} • Byggeoppdrag
+              </span>
+              <span class="text-2xl">${mission.icon}</span>
+            </div>
+            <p class="reading-font font-black text-slate-800 text-base sm:text-lg leading-snug mb-2">
+              ${formatSentenceCase(mission.text)}
+            </p>
+            <button onclick="speakText('${mission.text.replace(/'/g, "\\'")}')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-3 py-1 rounded-xl text-xs inline-flex items-center gap-1">
+              <span>🔊</span> Hør oppdraget
+            </button>
+          </div>
+          <div class="pt-2 border-t border-slate-100">
+            ${
+              screenshotUrl
+                ? `
+                  <div class="mb-2 relative group cursor-pointer" onclick="openPhotoModal('${mission.id}')">
+                    <img src="${screenshotUrl}" alt="Minecraft bygg" class="w-full h-40 object-cover rounded-2xl border-2 border-emerald-300 shadow-sm" />
+                    <span class="absolute bottom-2 right-2 bg-slate-900/75 text-white text-xs font-bold px-2.5 py-1 rounded-lg">🔍 Se stort bilde</span>
+                  </div>
+                `
+                : `
+                  <div class="mb-2 h-28 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-400 text-xs font-bold">
+                    <span>Ingen skjermbilde lastet opp ennå</span>
+                  </div>
+                `
+            }
+            <button onclick="triggerUploadForMission('${mission.id}')" class="btn-3d w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5">
+              <span>📸</span> ${screenshotUrl ? 'Bytt skjermbilde fra Minecraft' : 'Last opp skjermbilde fra Minecraft'}
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function speakMissionModal() {
+      const m = MINECRAFT_MISSIONS.find(x => x.id === activeUploadMissionId);
+      if (m) speakText(m.text);
+    }
+
+    function closeMissionModal() {
+      document.getElementById('modal-mission').classList.add('hidden');
+    }
+
+    function triggerUploadForCurrentMission() {
+      if (!activeUploadMissionId) return;
+      triggerUploadForMission(activeUploadMissionId);
+    }
+
+    function triggerUploadForMission(missionId) {
+      activeUploadMissionId = missionId;
+      const input = document.getElementById('minecraft-file-input');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function handleImageUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file || !activeUploadMissionId) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = async function () {
+          // Komprimer bildet til maks 800px bredde og JPEG 0.8 via HTML5 Canvas
+          const maxWidth = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          await saveScreenshotToDB(activeUploadMissionId, compressedDataUrl);
+
+          playTone('success');
+          fireConfetti();
+
+          const previewBox = document.getElementById('mission-modal-preview-box');
+          const previewImg = document.getElementById('mission-modal-preview-img');
+          if (previewBox && previewImg && !document.getElementById('modal-mission').classList.contains('hidden')) {
+            previewImg.src = compressedDataUrl;
+            previewBox.classList.remove('hidden');
+          }
+
+          if (currentView === 'trophies') {
+            renderTrophyRoom();
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function openPhotoModal(missionId) {
+      const savedImages = await getAllScreenshotsFromDB();
+      const imgUrl = savedImages[missionId];
+      const mission = MINECRAFT_MISSIONS.find(m => m.id === missionId);
+      if (!imgUrl) return;
+
+      document.getElementById('photo-modal-caption').textContent = mission ? formatSentenceCase(mission.text) : '';
+      document.getElementById('photo-modal-img').src = imgUrl;
+      document.getElementById('modal-photo').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('modal-photo').classList.add('hidden');
+    }
+
+    /* ==========================================================================
+       14. MINISPILL-MOTOR (Ballong-Smell & Monster-Mat)
+       - Støtter hastighetsvelger (Rolig, Passe, Rask)
+       - Nivå 1: Enkeltbokstaver (Vokaler = RØDE, Konsonanter = BLÅ)
+       - Nivå 2: Minimale ordpar (Jevn farge på hele ord)
+       - Nivå 3: Sammensatte grafemer og ordpar
+       - Bilde-boble-modus: Målordet vises uten lyd, bildene svever i boblene!
+       ========================================================================== */
+    let mgActiveType = null; // 'balloons' | 'catcher'
+    let mgScore = 0;
+    let mgTimeLeft = 60;
+    let mgTimerInterval = null;
+    let mgAnimFrame = null;
+    let mgItems = [];
+    let mgLastSpawn = 0;
+    let mgTargetWordObj = null;
+    let mgNextLetterIndex = 0;
+    let mgChallengeType = 'letters'; // 'letters' | 'words' | 'grapheme' | 'pictures'
+    let mgLevel = 1;
+    let mgPlayerX = 200;
+
+    const MG_SPEED_MULTIPLIERS = {
+      slow: 0.55,
+      normal: 0.95,
+      fast: 1.45
+    };
+
+    function openMinigameModal() {
+      stopMinigameLoops();
+      mgLevel = state.currentLevel || 1;
+      updateMinigameSettingsUI();
+      document.getElementById('minigame-Menu').classList.remove('hidden');
+      document.getElementById('minigame-Arena').classList.add('hidden');
+      document.getElementById('modal-minigame').classList.remove('hidden');
+      playTone('pop');
+    }
+
+    function closeMinigameModal() {
+      stopMinigameLoops();
+      document.getElementById('modal-minigame').classList.add('hidden');
+      if (currentView === 'game') {
+        nextTask();
+      }
+    }
+
+    function stopAndExitMinigame() {
+      stopMinigameLoops();
+      document.getElementById('minigame-Arena').classList.add('hidden');
+      document.getElementById('minigame-Menu').classList.remove('hidden');
+    }
+
+    function stopMinigameLoops() {
+      if (mgTimerInterval) {
+        clearInterval(mgTimerInterval);
+        mgTimerInterval = null;
+      }
+      if (mgAnimFrame) {
+        cancelAnimationFrame(mgAnimFrame);
+        mgAnimFrame = null;
+      }
+    }
+
+    function setMinigameSpeed(speed) {
+      state.minigameSpeed = speed;
+      saveState();
+      updateMinigameSettingsUI();
+    }
+
+    function setMinigameLevel(lvl) {
+      mgLevel = lvl;
+      updateMinigameSettingsUI();
+    }
+
+    function setMinigameBubbleMode(mode) {
+      state.minigameBubbleMode = mode;
+      saveState();
+      updateMinigameSettingsUI();
+    }
+
+    function updateMinigameSettingsUI() {
+      const spd = state.minigameSpeed || 'slow';
+      ['slow', 'normal', 'fast'].forEach(s => {
+        const btn = document.getElementById(`mg-speed-${s}`);
+        if (btn) {
+          btn.className = (s === spd)
+            ? 'px-3 py-1 rounded-lg font-extrabold text-xs sm:text-sm bg-emerald-500 text-white shadow-sm'
+            : 'px-3 py-1 rounded-lg font-extrabold text-xs sm:text-sm text-slate-600';
+        }
+        const liveBtn = document.getElementById(`mg-live-${s}`);
+        if (liveBtn) {
+          liveBtn.className = (s === spd)
+            ? 'px-2 py-1 rounded-lg text-xs font-black bg-emerald-500 text-white'
+            : 'px-2 py-1 rounded-lg text-xs font-black text-slate-600';
+        }
+      });
+
+      [1, 2, 3].forEach(l => {
+        const btn = document.getElementById(`mg-lvl-${l}`);
+        if (btn) {
+          btn.className = (l === mgLevel)
+            ? 'px-2.5 py-1 rounded-lg font-extrabold text-xs bg-sky-600 text-white shadow-sm'
+            : 'px-2.5 py-1 rounded-lg font-extrabold text-xs text-slate-600';
+        }
+      });
+
+      const bMode = state.minigameBubbleMode || 'text';
+      const btnText = document.getElementById('mg-mode-text');
+      const btnPics = document.getElementById('mg-mode-pictures');
+      if (btnText && btnPics) {
+        btnText.className = (bMode === 'text')
+          ? 'px-2.5 py-1 rounded-lg font-extrabold text-xs bg-purple-600 text-white shadow-sm'
+          : 'px-2.5 py-1 rounded-lg font-extrabold text-xs text-slate-600';
+        btnPics.className = (bMode === 'pictures')
+          ? 'px-2.5 py-1 rounded-lg font-extrabold text-xs bg-purple-600 text-white shadow-sm'
+          : 'px-2.5 py-1 rounded-lg font-extrabold text-xs text-slate-600';
+      }
+    }
+
+    function startMinigame(type) {
+      mgActiveType = type;
+      mgScore = 0;
+      mgTimeLeft = 60;
+      mgItems = [];
+      mgLastSpawn = 0;
+
+      document.getElementById('mg-score').textContent = '0';
+      document.getElementById('mg-timer').textContent = '60';
+      document.getElementById('minigame-gameover').classList.add('hidden');
+      document.getElementById('minigame-Menu').classList.add('hidden');
+      document.getElementById('minigame-Arena').classList.remove('hidden');
+
+      const canvas = document.getElementById('minigame-canvas');
+      canvas.width = canvas.parentElement.clientWidth || 640;
+      canvas.height = canvas.parentElement.clientHeight || 420;
+      mgPlayerX = canvas.width / 2;
+
+      pickNewMinigameWord();
+
+      mgTimerInterval = setInterval(() => {
+        mgTimeLeft -= 1;
+        document.getElementById('mg-timer').textContent = String(Math.max(0, mgTimeLeft));
+        if (mgTimeLeft <= 0) {
+          endMinigameSession();
+        }
+      }, 1000);
+
+      mgAnimFrame = requestAnimationFrame(mgLoop);
+    }
+
+    function endMinigameSession() {
+      stopMinigameLoops();
+      playTone('success');
+      fireConfetti();
+      document.getElementById('mg-final-score').textContent = String(mgScore);
+      document.getElementById('minigame-gameover').classList.remove('hidden');
+    }
+
+    function pickNewMinigameWord() {
+      const pool = WORD_BANK.filter(w => w.level === mgLevel);
+      mgTargetWordObj = pool[Math.floor(Math.random() * pool.length)] || WORD_BANK[0];
+      mgNextLetterIndex = 0;
+
+      if (state.minigameBubbleMode === 'pictures') {
+        mgChallengeType = 'pictures';
+      } else if (mgLevel === 1) {
+        mgChallengeType = 'letters';
+      } else if (mgLevel === 2) {
+        mgChallengeType = 'words';
+      } else {
+        mgChallengeType = (mgTargetWordObj.grapheme && Math.random() < 0.55) ? 'grapheme' : 'words';
+      }
+
+      updateMinigameTargetUI();
+
+      // Kun les opp ordet hvis vi IKKE er i "Bilder i boblene (Les uten lyd!)"-modus
+      if (mgChallengeType !== 'pictures') {
+        setTimeout(() => speakMinigameTarget(), 150);
+      }
+    }
+
+    function speakMinigameTarget() {
+      if (!mgTargetWordObj || mgChallengeType === 'pictures') return;
+      speakText(mgTargetWordObj.spoken || mgTargetWordObj.word, 0.95);
+    }
+
+    function updateMinigameTargetUI() {
+      if (!mgTargetWordObj) return;
+      const btnSpeak = document.getElementById('mg-btn-speak');
+      const emojiEl = document.getElementById('mg-target-emoji');
+      const lettersEl = document.getElementById('mg-target-letters');
+
+      if (mgChallengeType === 'pictures') {
+        // I bildemodus skal barnet lese ordet selv uten lyd og uten bilde øverst
+        btnSpeak.classList.add('hidden');
+        emojiEl.classList.add('hidden');
+        lettersEl.textContent = formatCase(mgTargetWordObj.word);
+      } else {
+        btnSpeak.classList.remove('hidden');
+        emojiEl.classList.remove('hidden');
+        emojiEl.textContent = mgTargetWordObj.emoji;
+
+        if (mgChallengeType === 'letters') {
+          const donePart = formatCase(mgTargetWordObj.word.slice(0, mgNextLetterIndex));
+          const remainingCount = mgTargetWordObj.word.length - mgNextLetterIndex;
+          const underscores = Array(remainingCount).fill('_').join(' ');
+          lettersEl.innerHTML = `<span class="text-emerald-600">${donePart}</span> <span class="text-slate-400">${underscores}</span>`;
+        } else if (mgChallengeType === 'grapheme' && mgTargetWordObj.grapheme) {
+          const rest = mgTargetWordObj.word.slice(mgTargetWordObj.grapheme.length);
+          lettersEl.innerHTML = `<span class="text-amber-600">___</span><span>${formatCase(rest)}</span>`;
+        } else {
+          lettersEl.innerHTML = `<span class="text-slate-400">🔊 Hør & fang riktig ord!</span>`;
+        }
+      }
+    }
+
+    function spawnMinigameItem(canvas) {
+      if (!mgTargetWordObj) return;
+      const isCorrectSpawn = Math.random() < 0.48;
+      let label = '';
+      let isCorrect = false;
+
+      if (mgChallengeType === 'pictures') {
+        if (isCorrectSpawn) {
+          label = mgTargetWordObj.emoji;
+          isCorrect = true;
+        } else {
+          const dist = mgTargetWordObj.distractorEmojis || ['🐱', '🌲', '⚽'];
+          label = dist[Math.floor(Math.random() * dist.length)];
+          isCorrect = (label === mgTargetWordObj.emoji);
+        }
+      } else if (mgChallengeType === 'letters') {
+        const neededChar = mgTargetWordObj.word[mgNextLetterIndex] || mgTargetWordObj.word[0];
+        if (isCorrectSpawn) {
+          label = neededChar;
+          isCorrect = true;
+        } else {
+          const pool = mgTargetWordObj.distractorLetters || ['S', 'K', 'L', 'O', 'E', 'T'];
+          label = pool[Math.floor(Math.random() * pool.length)];
+          isCorrect = (label.toUpperCase() === neededChar.toUpperCase());
+        }
+      } else if (mgChallengeType === 'grapheme') {
+        const targetG = mgTargetWordObj.grapheme || 'KJ';
+        if (isCorrectSpawn) {
+          label = targetG;
+          isCorrect = true;
+        } else {
+          const gPool = mgTargetWordObj.distractorGraphemes || ['KJ', 'SKJ', 'SJ', 'SK'];
+          label = gPool[Math.floor(Math.random() * gPool.length)];
+          isCorrect = (label === targetG);
+        }
+      } else {
+        // Hele ord (minimalpar på Nivå 2 og 3)
+        if (isCorrectSpawn) {
+          label = mgTargetWordObj.word;
+          isCorrect = true;
+        } else {
+          const wPool = mgTargetWordObj.distractorWords || ['BAKE', 'TAK', 'SKOLE'];
+          label = wPool[Math.floor(Math.random() * wPool.length)];
+          isCorrect = (label.toUpperCase() === mgTargetWordObj.word.toUpperCase());
+        }
+      }
+
+      const radius = (mgChallengeType === 'words') ? 44 : 36;
+      const x = radius + 12 + Math.random() * Math.max(40, canvas.width - (radius + 12) * 2);
+      const baseSpeed = 1.2 + Math.random() * 0.7;
+
+      mgItems.push({
+        x,
+        y: mgActiveType === 'balloons' ? canvas.height + radius : -radius,
+        radius,
+        baseSpeed,
+        label,
+        isCorrect
+      });
+    }
+
+    function handleMinigameCorrectHit() {
+      if (mgChallengeType === 'letters') {
+        playTone('pop');
+        mgScore += 1;
+        document.getElementById('mg-score').textContent = String(mgScore);
+        mgNextLetterIndex += 1;
+
+        if (mgNextLetterIndex >= mgTargetWordObj.word.length) {
+          playTone('success');
+          mgScore += 2;
+          document.getElementById('mg-score').textContent = String(mgScore);
+          pickNewMinigameWord();
+        } else {
+          updateMinigameTargetUI();
+        }
+      } else {
+        // Bilde-boble, hele ord (minimalpar) eller sammensatt grafem truffet!
+        playTone('success');
+        mgScore += 3;
+        document.getElementById('mg-score').textContent = String(mgScore);
+        if (mgChallengeType === 'pictures') {
+          speakText(mgTargetWordObj.spoken || mgTargetWordObj.word, 0.95);
+        }
+        mgItems = [];
+        pickNewMinigameWord();
+      }
+    }
+
+    function mgLoop(timestamp) {
+      const canvas = document.getElementById('minigame-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const speedMult = MG_SPEED_MULTIPLIERS[state.minigameSpeed || 'slow'] || 0.55;
+
+      // Tilpass canvas-størrelse ved behov
+      const rect = canvas.parentElement.getBoundingClientRect();
+      if (rect.width > 0 && (Math.abs(canvas.width - rect.width) > 4 || Math.abs(canvas.height - rect.height) > 4)) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const spawnInterval = 1350 / speedMult;
+      if (!mgLastSpawn || timestamp - mgLastSpawn > spawnInterval) {
+        if (mgItems.length < 7) {
+          spawnMinigameItem(canvas);
+        }
+        mgLastSpawn = timestamp;
+      }
+
+      const catcherY = canvas.height - 46;
+
+      for (let i = mgItems.length - 1; i >= 0; i--) {
+        const item = mgItems[i];
+        const dy = item.baseSpeed * speedMult * 1.65;
+
+        if (mgActiveType === 'balloons') {
+          item.y -= dy;
+        } else {
+          item.y += dy;
+        }
+
+        // Tegn boble / ballong
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+
+        if (mgChallengeType === 'pictures') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#38bdf8';
+        } else if (mgChallengeType === 'letters' && item.label.length === 1) {
+          // Vokaler er RØDE, konsonanter er BLÅ (kun for enkeltbokstaver!)
+          if (isNorwegianVowel(item.label)) {
+            ctx.fillStyle = '#ffe4e6';
+            ctx.strokeStyle = '#e11d48';
+          } else {
+            ctx.fillStyle = '#e0f2fe';
+            ctx.strokeStyle = '#0284c7';
+          }
+        } else {
+          // Hele ord og sammensatte grafemer har jevn, nøytral farge
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#6366f1';
+        }
+
+        ctx.lineWidth = 4;
+        ctx.fill();
+        ctx.stroke();
+
+        // Tekst eller emoji inni boblen
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (mgChallengeType === 'pictures') {
+          ctx.font = '34px sans-serif';
+          ctx.fillText(item.label, item.x, item.y + 2);
+        } else if (mgChallengeType === 'letters' && item.label.length === 1) {
+          ctx.fillStyle = isNorwegianVowel(item.label) ? '#be123c' : '#0369a1';
+          ctx.font = '900 28px Verdana, sans-serif';
+          ctx.fillText(formatCase(item.label), item.x, item.y + 1);
+        } else {
+          ctx.fillStyle = '#1e293b';
+          const fontSize = item.label.length > 4 ? 17 : 22;
+          ctx.font = `900 ${fontSize}px Verdana, sans-serif`;
+          ctx.fillText(formatCase(item.label), item.x, item.y + 1);
+        }
+        ctx.restore();
+
+        // Kollisjonssjekk i Monster-Mat
+        if (mgActiveType === 'catcher') {
+          const dist = Math.hypot(item.x - mgPlayerX, item.y - catcherY);
+          if (dist < item.radius + 34) {
+            mgItems.splice(i, 1);
+            if (item.isCorrect) {
+              handleMinigameCorrectHit();
+            } else {
+              playTone('gentle_oops');
+            }
+            continue;
+          }
+        }
+
+        // Fjern når utenfor skjermen
+        if (mgActiveType === 'balloons' && item.y < -item.radius - 20) {
+          mgItems.splice(i, 1);
+        } else if (mgActiveType === 'catcher' && item.y > canvas.height + item.radius + 20) {
+          mgItems.splice(i, 1);
+        }
+      }
+
+      // Tegn spiller-monster i Monster-Mat
+      if (mgActiveType === 'catcher') {
+        ctx.save();
+        ctx.font = '52px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👾', mgPlayerX, catcherY);
+        ctx.restore();
+      }
+
+      mgAnimFrame = requestAnimationFrame(mgLoop);
+    }
+
+    // Touch- og musehendelser for Minispill-canvas
+    (function setupMinigameCanvasEvents() {
+      const canvas = document.getElementById('minigame-canvas');
+      if (!canvas) return;
+
+      function getCanvasPos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        return {
+          x: clientX - rect.left,
+          y: clientY - rect.top
+        };
+      }
+
+      function handleTap(evt) {
+        if (!mgActiveType) return;
+        const pos = getCanvasPos(evt);
+        mgPlayerX = Math.max(36, Math.min(canvas.width - 36, pos.x));
+
+        if (mgActiveType === 'balloons') {
+          for (let i = mgItems.length - 1; i >= 0; i--) {
+            const item = mgItems[i];
+            const dist = Math.hypot(pos.x - item.x, pos.y - item.y);
+            if (dist <= item.radius + 14) {
+              mgItems.splice(i, 1);
+              if (item.isCorrect) {
+                handleMinigameCorrectHit();
+              } else {
+                playTone('gentle_oops');
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      function handleMove(evt) {
+        if (mgActiveType !== 'catcher') return;
+        const pos = getCanvasPos(evt);
+        mgPlayerX = Math.max(36, Math.min(canvas.width - 36, pos.x));
+      }
+
+      canvas.addEventListener('mousedown', handleTap);
+      canvas.addEventListener('mousemove', handleMove);
+      canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(e); }, { passive: false });
+      canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); }, { passive: false });
+    })();
+
+    /* ==========================================================================
+       16. FORELDRE / LÆRER-HJØRNE (Innstillinger & Nullstilling)
+       ========================================================================== */
+    function openTeacherModal() {
+      initVoices();
+      showResetConfirm(false);
+      updateAutoSpeakButtonUI();
+      document.getElementById('modal-teacher').classList.remove('hidden');
+    }
+
+    function closeTeacherModal() {
+      document.getElementById('modal-teacher').classList.add('hidden');
+    }
+
+    function toggleAutoSpeak() {
+      state.autoSpeak = !state.autoSpeak;
+      saveState();
+      updateAutoSpeakButtonUI();
+    }
+
+    function updateAutoSpeakButtonUI() {
+      const btn = document.getElementById('btn-toggle-autospeak');
+      if (!btn) return;
+      if (state.autoSpeak) {
+        btn.textContent = 'PÅ';
+        btn.className = 'bg-emerald-500 text-white font-extrabold px-3.5 py-1.5 rounded-xl text-xs';
+      } else {
+        btn.textContent = 'AV';
+        btn.className = 'bg-slate-300 text-slate-700 font-extrabold px-3.5 py-1.5 rounded-xl text-xs';
+      }
+    }
+
+    function showResetConfirm(show) {
+      document.getElementById('reset-step-1').classList.toggle('hidden', show);
+      document.getElementById('reset-step-2').classList.toggle('hidden', !show);
+    }
+
+    async function confirmFullReset() {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(WRITER_STORAGE_KEY);
+      await clearAllScreenshotsInDB();
+
+      state = {
+        stars: 0,
+        useLowercase: false,
+        autoSpeak: true,
+        taskMode: 'mixed',
+        currentLevel: 1,
+        unlockedMonsters: [],
+        unlockedMissions: MINECRAFT_MISSIONS.map(m => m.id)
+      };
+
+      saveState();
+      updateCaseUI();
+      updateModeButtonsUI();
+      closeTeacherModal();
+      showView('portal');
+    }
+
+    /* ==========================================================================
+       16B. PROGRAM 2: LYDBOKA / SKRIVEVERKSTED (Skolelyd + Book Creator)
+       - Leser opp hele det siste ordet når barnet trykker Mellomrom
+       - Leser opp hele setningen ved punktum/utropstegn/spørsmålstegn
+       - Ingen syntetiske enkeltfonemer ved bokstavtrykk (kun en behagelig tastelyd)
+       - Autolagrer alle boksider i localStorage
+       ========================================================================== */
+    const WRITER_STORAGE_KEY = 'ordhelten_lydboka_pages_v1';
+
+    let writerData = {
+      activePageId: 'p1',
+      speakWords: true,
+      showOnScreenKB: true,
+      pages: [
+        { id: 'p1', title: 'Side 1', sticker: '🏰', bg: '#fffbeb', text: 'HER ER MITT HUS.' },
+        { id: 'p2', title: 'Side 2', sticker: '🦖', bg: '#f0f9ff', text: '' }
+      ]
+    };
+
+    function loadWriterData() {
+      try {
+        const raw = localStorage.getItem(WRITER_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+            writerData = { ...writerData, ...parsed };
+          }
+        }
+      } catch (e) {
+        console.warn('Kunne ikke laste LydBoka:', e);
+      }
+    }
+
+    function saveWriterData() {
+      try {
+        localStorage.setItem(WRITER_STORAGE_KEY, JSON.stringify(writerData));
+        const ind = document.getElementById('writer-save-indicator');
+        if (ind) {
+          ind.textContent = '💾 Lagret ✓';
+          ind.className = 'text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200';
+        }
+      } catch (e) {
+        console.warn('Kunne ikke lagre LydBoka:', e);
+      }
+    }
+
+    function getCurrentWriterPage() {
+      return writerData.pages.find(p => p.id === writerData.activePageId) || writerData.pages[0];
+    }
+
+    function startWriterTrack(trackNum) {
+      loadWriterData();
+      const page = getCurrentWriterPage();
+      if (page) {
+        if (trackNum === 1 && !page.text.trim()) {
+          page.sticker = '🐱';
+          page.text = '';
+        } else if (trackNum === 2) {
+          // Setningsstarter dersom siden er tom eller på standardtekst
+          if (!page.text.trim() || page.text === 'HER ER MITT HUS.') {
+            page.sticker = '🦖';
+            page.text = 'JEG SER EN ';
+          }
+        }
+        saveWriterData();
+      }
+      showView('writer');
+    }
+
+    function initWriterView() {
+      loadWriterData();
+      renderWriterPageSelector();
+      renderCurrentWriterPage();
+      renderWriterKeyboard();
+      updateWriterSettingButtons();
+    }
+
+    function renderWriterPageSelector() {
+      const sel = document.getElementById('writer-page-select');
+      if (!sel) return;
+      sel.innerHTML = '';
+      writerData.pages.forEach((p, idx) => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        const preview = p.text.trim().slice(0, 14) || 'Tom side';
+        opt.textContent = `${p.sticker} Side ${idx + 1}: ${preview}`;
+        if (p.id === writerData.activePageId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderCurrentWriterPage() {
+      const page = getCurrentWriterPage();
+      if (!page) return;
+      document.getElementById('writer-active-sticker').textContent = page.sticker || '🏰';
+      document.getElementById('writer-paper').style.backgroundColor = page.bg || '#fffbeb';
+      const ta = document.getElementById('writer-textarea');
+      ta.value = state.useLowercase ? page.text.toLowerCase() : page.text.toUpperCase();
+    }
+
+    function applyWriterCaseTransform() {
+      const ta = document.getElementById('writer-textarea');
+      if (!ta) return;
+      ta.value = state.useLowercase ? ta.value.toLowerCase() : ta.value.toUpperCase();
+    }
+
+    function switchWriterPage(pageId) {
+      writerData.activePageId = pageId;
+      saveWriterData();
+      renderCurrentWriterPage();
+    }
+
+    function createNewWriterPage() {
+      const newId = 'p_' + Date.now();
+      const defaultStickers = ['🚀', '🦄', '🦖', '⚽', '🐱', '🌈', '🍦'];
+      const sticker = defaultStickers[writerData.pages.length % defaultStickers.length];
+      writerData.pages.push({
+        id: newId,
+        title: `Side ${writerData.pages.length + 1}`,
+        sticker,
+        bg: '#fffbeb',
+        text: ''
+      });
+      writerData.activePageId = newId;
+      playTone('pop');
+      saveWriterData();
+      renderWriterPageSelector();
+      renderCurrentWriterPage();
+    }
+
+    function deleteCurrentWriterPage() {
+      const page = getCurrentWriterPage();
+      if (!page) return;
+      if (writerData.pages.length <= 1) {
+        page.text = '';
+      } else {
+        writerData.pages = writerData.pages.filter(p => p.id !== page.id);
+        writerData.activePageId = writerData.pages[0].id;
+      }
+      playTone('pop');
+      saveWriterData();
+      renderWriterPageSelector();
+      renderCurrentWriterPage();
+    }
+
+    function setWriterSticker(emoji) {
+      const page = getCurrentWriterPage();
+      if (!page) return;
+      page.sticker = emoji;
+      playTone('pop');
+      saveWriterData();
+      renderWriterPageSelector();
+      document.getElementById('writer-active-sticker').textContent = emoji;
+    }
+
+    function setWriterBg(hexColor) {
+      const page = getCurrentWriterPage();
+      if (!page) return;
+      page.bg = hexColor;
+      saveWriterData();
+      document.getElementById('writer-paper').style.backgroundColor = hexColor;
+    }
+
+    function toggleWriterSetting(key) {
+      writerData[key] = !writerData[key];
+      playTone('pop');
+      saveWriterData();
+      updateWriterSettingButtons();
+    }
+
+    function updateWriterSettingButtons() {
+      const btnWord = document.getElementById('btn-writer-word-sound');
+      const btnKB = document.getElementById('btn-writer-keyboard');
+      const kbContainer = document.getElementById('writer-onscreen-kb');
+
+      if (btnWord) {
+        btnWord.textContent = `🔊 Ordlyd: ${writerData.speakWords ? 'PÅ' : 'AV'}`;
+        btnWord.className = writerData.speakWords
+          ? 'px-2.5 py-1.5 rounded-xl font-extrabold text-xs border-2 bg-emerald-100 border-emerald-400 text-emerald-900'
+          : 'px-2.5 py-1.5 rounded-xl font-extrabold text-xs border-2 bg-slate-100 border-slate-300 text-slate-500';
+      }
+      if (btnKB && kbContainer) {
+        btnKB.className = writerData.showOnScreenKB
+          ? 'px-2.5 py-1.5 rounded-xl font-extrabold text-xs border-2 bg-sky-100 border-sky-400 text-sky-900'
+          : 'px-2.5 py-1.5 rounded-xl font-extrabold text-xs border-2 bg-slate-100 border-slate-300 text-slate-500';
+        kbContainer.classList.toggle('hidden', !writerData.showOnScreenKB);
+      }
+    }
+
+    function handleWriterInput(e) {
+      const ta = e.target;
+      const page = getCurrentWriterPage();
+      if (!page) return;
+
+      const prevLen = (page.text || '').length;
+      const newVal = ta.value;
+      page.text = newVal;
+      saveWriterData();
+      renderWriterPageSelector();
+
+      // Finn siste tegn som ble skrevet
+      if (newVal.length > prevLen) {
+        const lastChar = newVal.slice(-1);
+        processTypedCharacterAudio(lastChar, newVal);
+      }
+    }
+
+    function handleWriterKeydown(e) {
+      // Støtte for fysisk tastatur
+    }
+
+    function processTypedCharacterAudio(char, fullText) {
+      if (char === ' ') {
+        // Les opp hele det siste ordet foran mellomrommet!
+        if (writerData.speakWords) {
+          const words = fullText.trim().split(/\s+/);
+          const lastWord = words[words.length - 1];
+          if (lastWord) speakText(lastWord, 0.95);
+        }
+      } else if (char === '.' || char === '!' || char === '?') {
+        // Les opp hele den siste setningen ved skilletegn!
+        if (writerData.speakWords) {
+          const parts = fullText.slice(0, -1).split(/[.!?]+/);
+          const lastSentence = parts[parts.length - 1].trim();
+          if (lastSentence) speakText(lastSentence, 0.95);
+        }
+      } else {
+        // Behagelig klikkelyd på enkeltbokstaver (ingen gebrokken enkeltbokstav-syntese)
+        playTone('pop');
+      }
+    }
+
+    function typeFromWriterVirtualKB(key) {
+      const ta = document.getElementById('writer-textarea');
+      const page = getCurrentWriterPage();
+      if (!ta || !page) return;
+
+      if (key === 'BACKSPACE') {
+        playTone('pop');
+        ta.value = ta.value.slice(0, -1);
+        page.text = ta.value;
+        saveWriterData();
+        renderWriterPageSelector();
+        return;
+      }
+
+      const outChar = state.useLowercase ? key.toLowerCase() : key.toUpperCase();
+      ta.value += outChar;
+      page.text = ta.value;
+      saveWriterData();
+      renderWriterPageSelector();
+      processTypedCharacterAudio(outChar, ta.value);
+    }
+
+    function speakEntireWriterPage() {
+      const page = getCurrentWriterPage();
+      if (!page || !page.text.trim()) {
+        speakText('Siden er tom. Skriv noen ord først!');
+        return;
+      }
+      speakText(page.text, 0.95);
+    }
+
+    function renderWriterKeyboard() {
+      const container = document.getElementById('writer-kb-rows');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const rows = [
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', 'Å'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Ø', 'Æ'],
+        ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '.', '!', 'BACKSPACE']
+      ];
+
+      rows.forEach(row => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap w-full';
+
+        row.forEach(key => {
+          const btn = document.createElement('button');
+          if (key === 'BACKSPACE') {
+            btn.className = 'tile-3d bg-slate-200 hover:bg-slate-300 text-slate-800 font-black px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm sm:text-base border-2 border-slate-300';
+            btn.textContent = '⌫';
+          } else if (key === '.' || key === '!') {
+            btn.className = 'tile-3d bg-amber-100 hover:bg-amber-200 text-amber-900 font-black w-8 h-10 sm:w-11 sm:h-12 rounded-xl text-base sm:text-xl border-2 border-amber-300';
+            btn.textContent = key;
+          } else {
+            const isVowel = isNorwegianVowel(key);
+            const colorCls = isVowel
+              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-400'
+              : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-400';
+            btn.className = `tile-3d reading-font ${colorCls} font-black w-8 h-10 sm:w-11 sm:h-12 rounded-xl text-base sm:text-xl border-2 flex items-center justify-center`;
+            btn.textContent = formatCase(key);
+          }
+          btn.onclick = () => typeFromWriterVirtualKB(key);
+          rowDiv.appendChild(btn);
+        });
+        container.appendChild(rowDiv);
+      });
+
+      // Mellomromstast nederst
+      const spaceRow = document.createElement('div');
+      spaceRow.className = 'w-full flex justify-center mt-0.5';
+      const spaceBtn = document.createElement('button');
+      spaceBtn.className = 'tile-3d bg-white hover:bg-slate-100 text-slate-700 font-extrabold w-64 sm:w-96 py-2 rounded-xl text-xs sm:text-sm border-2 border-slate-300';
+      spaceBtn.textContent = 'MELLOMROM (Les ord 🔊)';
+      spaceBtn.onclick = () => typeFromWriterVirtualKB(' ');
+      spaceRow.appendChild(spaceBtn);
+      container.appendChild(spaceRow);
+    }
+
+    /* ==========================================================================
+       16C. PROGRAM 3: ORDJAKTEN (Inspirert av GraphoGame – kun naturlige ord + visuell førstebokstav)
+       - Etappe 1: 🖼️ Førstebokstav fra bilde (Uten talesyntese ved start! Barnet ser bildet og finner første bokstav. Hele ordet bekreftes ved riktig svar.)
+       - Etappe 2: 🌱 Korte lydrette ord (Ekte norske ord som talesyntesen uttaler naturlig)
+       - Etappe 3: 🚀 Minimalpar (Dobbel konsonant i ekte ord)
+       - Etappe 4: 👑 KJ / SKJ / SJ / NG i ekte ord
+       ========================================================================== */
+    const GRAPHO_STAGE_META = {
+      1: {
+        num: 1,
+        icon: '🖼️',
+        title: 'Førstebokstav (Uten lyd)',
+        shortDesc: 'Framlyd og førstebokstav ut fra bilde – uten talestøtte ved start.',
+        teacherGoal: 'Fonologisk bevissthet (framlydsanalyse) og bokstav-lyd-kobling uten at eleven kan gjette via opplesning.',
+        teacherDetails: 'Eleven ser et konkret bilde og resten av ordet (f.eks. ☀️ _ O L) og må isolere første språklyd selv. Vokaler er røde og konsonanter er blå. Når riktig bokstav trykkes, vises og leses hele ordet.',
+        examples: 'SOL, BIL, MUS, HUS, FISK, EPLE, OST',
+        badgeColor: 'bg-sky-100 text-sky-900 border-sky-300'
+      },
+      2: {
+        num: 2,
+        icon: '🌱',
+        title: 'Korte lydrette ord',
+        shortDesc: 'Rask avkoding av høyfrekvente, lydrette småord på 2–3 bokstaver.',
+        teacherGoal: 'Sikker fonologisk avkoding (lydering) av korte, lydrette ord med nærliggende distraktorer.',
+        teacherDetails: 'Talesyntesen leser et kort, lydrett ord. Eleven må skille målordet fra ord som kun skiller seg med én vokal eller konsonant (f.eks. SOL vs. SIL/SAL/BOL).',
+        examples: 'SOL, BIL, MUS, REV, TOG, BÅT, SKO, BOK',
+        badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300'
+      },
+      3: {
+        num: 3,
+        icon: '🚀',
+        title: 'Minimalpar & dobbel konsonant',
+        shortDesc: 'Skille kort og lang vokal styrt av enkel eller dobbel konsonant.',
+        teacherGoal: 'Ortografisk lesing av dobbel konsonant og bevissthet om vokallengde i norske minimalpar.',
+        teacherDetails: 'Eleven hører et ord og må koble vokallengden til riktig skrivemåte blant minimale ordpar og rimord.',
+        examples: 'BAKE / BAKKE, TAK / TAKK, PEN / PENN, LESE / LESSE',
+        badgeColor: 'bg-amber-100 text-amber-900 border-amber-300'
+      },
+      4: {
+        num: 4,
+        icon: '👑',
+        title: 'Sammensatte grafemer (KJ/SKJ/NG)',
+        shortDesc: 'Komplekse lydforbindelser og stumme bokstaver i lengre ord.',
+        teacherGoal: 'Automatisert gjenkjenning av sammensatte grafemer (KJ, SKJ, SJ, HJ, STJ, GN, NG) som bryter med 1-til-1-lydprinsippet.',
+        teacherDetails: 'Trener ortografisk lesing av lengre ord der flere bokstaver danner én enkelt språklyd eller har stumme konsonanter.',
+        examples: 'KJOLE, SKOLE, SKJOLD, SKJELL, HJERTE, STJERNE, REGN, KONGE',
+        badgeColor: 'bg-purple-100 text-purple-900 border-purple-300'
+      }
+    };
+
+    const GRAPHO_STAGES = {
+      1: [
+        { target: 'S', fullWord: 'SOL',  emoji: '☀️', spoken: 'sol.',  distractors: ['M', 'L', 'K', 'T', 'R'] },
+        { target: 'B', fullWord: 'BIL',  emoji: '🚗', spoken: 'bil.',  distractors: ['P', 'D', 'M', 'S', 'L'] },
+        { target: 'M', fullWord: 'MUS',  emoji: '🐭', spoken: 'mus.',  distractors: ['N', 'S', 'V', 'B', 'K'] },
+        { target: 'K', fullWord: 'KU',   emoji: '🐄', spoken: 'ku.',   distractors: ['G', 'T', 'P', 'S', 'B'] },
+        { target: 'H', fullWord: 'HUS',  emoji: '🏠', spoken: 'hus.',  distractors: ['K', 'F', 'R', 'T', 'S'] },
+        { target: 'R', fullWord: 'REV',  emoji: '🦊', spoken: 'rev.',  distractors: ['L', 'S', 'F', 'V', 'N'] },
+        { target: 'I', fullWord: 'IS',   emoji: '🍦', spoken: 'is.',   distractors: ['E', 'Y', 'A', 'O', 'U'] },
+        { target: 'T', fullWord: 'TOG',  emoji: '🚂', spoken: 'tog.',  distractors: ['D', 'P', 'K', 'S', 'L'] },
+        { target: 'B', fullWord: 'BÅT',  emoji: '⛵', spoken: 'båt.',  distractors: ['P', 'D', 'F', 'V', 'G'] },
+        { target: 'K', fullWord: 'KATT', emoji: '🐱', spoken: 'katt.', distractors: ['G', 'T', 'S', 'H', 'P'] },
+        { target: 'B', fullWord: 'BALL', emoji: '⚽', spoken: 'ball.', distractors: ['P', 'D', 'M', 'L', 'V'] },
+        { target: 'F', fullWord: 'FISK', emoji: '🐟', spoken: 'fisk.', distractors: ['V', 'S', 'H', 'P', 'T'] },
+        { target: 'L', fullWord: 'LØVE', emoji: '🦁', spoken: 'løve.', distractors: ['R', 'N', 'S', 'T', 'M'] },
+        { target: 'E', fullWord: 'EPLE', emoji: '🍎', spoken: 'eple.', distractors: ['A', 'I', 'Æ', 'O', 'Ø'] },
+        { target: 'O', fullWord: 'OST',  emoji: '🧀', spoken: 'ost.',  distractors: ['Å', 'U', 'A', 'E', 'Ø'] }
+      ],
+      2: [
+        { target: 'SOL',  spoken: 'sol.',  distractors: ['SIL', 'SAL', 'BOL', 'MOL'] },
+        { target: 'BIL',  spoken: 'bil.',  distractors: ['PIL', 'SIL', 'BALL', 'BÅL'] },
+        { target: 'MUS',  spoken: 'mus.',  distractors: ['HUS', 'LUS', 'MOS', 'MAS'] },
+        { target: 'HUS',  spoken: 'hus.',  distractors: ['MUS', 'PUS', 'HÅS', 'HOS'] },
+        { target: 'REV',  spoken: 'rev.',  distractors: ['RØV', 'ROV', 'LEV', 'VEI'] },
+        { target: 'TOG',  spoken: 'tog.',  distractors: ['TAK', 'TOR', 'TÅG', 'DOG'] },
+        { target: 'BÅT',  spoken: 'båt.',  distractors: ['BOT', 'BIT', 'VÅT', 'LÅT'] },
+        { target: 'KU',   spoken: 'ku.',   distractors: ['BU', 'SNU', 'KO', 'KØ'] },
+        { target: 'IS',   spoken: 'is.',   distractors: ['OS', 'AS', 'IL', 'INN'] },
+        { target: 'SKO',  spoken: 'sko.',  distractors: ['SNØ', 'SO', 'KLO', 'BRO'] },
+        { target: 'MAT',  spoken: 'mat.',  distractors: ['MOT', 'MET', 'HAT', 'FAT'] },
+        { target: 'BOK',  spoken: 'bok.',  distractors: ['BAK', 'BEK', 'KOK', 'TOK'] }
+      ],
+      3: [
+        { target: 'BAKKE', spoken: 'bakke.', distractors: ['BAKE', 'PAKKE', 'TAKKE'] },
+        { target: 'BAKE',  spoken: 'bake.',  distractors: ['BAKKE', 'BADE', 'KAKE'] },
+        { target: 'TAKK',  spoken: 'takk!',  distractors: ['TAK', 'PAKK', 'LAKK'] },
+        { target: 'TAK',   spoken: 'tak.',   distractors: ['TAKK', 'SAK', 'BAK'] },
+        { target: 'PENN',  spoken: 'penn.',  distractors: ['PEN', 'VENN', 'RENN'] },
+        { target: 'PEN',   spoken: 'pen.',   distractors: ['PENN', 'BEN', 'SEN'] },
+        { target: 'LESE',  spoken: 'lese.',  distractors: ['LESSE', 'NESE', 'LEKE'] },
+        { target: 'LESSE', spoken: 'lesse.', distractors: ['LESE', 'MESSE', 'NISSE'] },
+        { target: 'HATT',  spoken: 'hatt.',  distractors: ['HAT', 'KATT', 'NATT'] },
+        { target: 'KOPP',  spoken: 'kopp.',  distractors: ['KOP', 'TOPP', 'SOPP'] },
+        { target: 'HOPPE', spoken: 'hoppe.', distractors: ['HOPE', 'KOPPE', 'STOPPE'] }
+      ],
+      4: [
+        { target: 'KJOLE',   spoken: 'kjole.',   distractors: ['SKOLE', 'STOLE', 'KOLE'] },
+        { target: 'SKOLE',   spoken: 'skole.',   distractors: ['KJOLE', 'STOLE', 'SOL'] },
+        { target: 'SKJOLD',  spoken: 'skjold.',  distractors: ['KALD', 'SOLGT', 'SKO'] },
+        { target: 'SKJELL',  spoken: 'skjell.',  distractors: ['FJELL', 'SELL', 'KVELD'] },
+        { target: 'SJØ',     spoken: 'sjø.',     distractors: ['SNØ', 'SKO', 'KØ'] },
+        { target: 'HJERTE',  spoken: 'hjerte.',  distractors: ['SMERTE', 'ERTE', 'STJERNE'] },
+        { target: 'STJERNE', spoken: 'stjerne.', distractors: ['HJERTE', 'TERNE', 'STERK'] },
+        { target: 'REGN',    spoken: 'regn.',    distractors: ['REN', 'TEGN', 'GREIN'] },
+        { target: 'KONGE',   spoken: 'konge.',   distractors: ['UNGE', 'MANGE', 'KONE'] },
+        { target: 'SENG',    spoken: 'seng.',    distractors: ['ENG', 'SEKK', 'SEN'] }
+      ]
+    };
+
+    let graphoCurrentStage = 1;
+    let graphoProgress = 0;
+    let graphoCurrentItem = null;
+    let graphoOptions = [];
+    let graphoAwaitingCorrection = false;
+    let graphoLocked = false;
+
+    function launchGraphoFromHub(stageNum) {
+      graphoCurrentStage = stageNum;
+      showView('grapho');
+    }
+
+    function initGraphoView() {
+      startGraphoStage(graphoCurrentStage || 1);
+    }
+
+    function openGraphoStageModal() {
+      renderGraphoStageModalCards();
+      document.getElementById('modal-grapho-stages').classList.remove('hidden');
+      playTone('pop');
+    }
+
+    function closeGraphoStageModal() {
+      document.getElementById('modal-grapho-stages').classList.add('hidden');
+    }
+
+    function renderGraphoStageModalCards() {
+      const container = document.getElementById('grapho-stage-modal-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      [1, 2, 3, 4].forEach(num => {
+        const meta = GRAPHO_STAGE_META[num];
+        const isCurrent = (graphoCurrentStage === num);
+        const card = document.createElement('div');
+        card.className = `rounded-3xl p-4 border-4 flex flex-col justify-between gap-3 transition-all ${
+          isCurrent
+            ? 'bg-indigo-50/90 border-indigo-500 shadow-md'
+            : 'bg-slate-50 border-slate-200 hover:border-indigo-300'
+        }`;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="px-2.5 py-1 rounded-full text-xs font-black border ${meta.badgeColor}">
+                Etappe ${meta.num}
+              </span>
+              ${isCurrent ? '<span class="text-xs font-black text-indigo-700 bg-white px-2.5 py-0.5 rounded-full border border-indigo-200">✓ Aktiv nå</span>' : ''}
+            </div>
+            <h3 class="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
+              <span class="text-2xl">${meta.icon}</span>
+              <span>${meta.title}</span>
+            </h3>
+            <div class="mt-2 space-y-1.5 text-xs text-slate-700 leading-relaxed">
+              <p><strong class="text-slate-900">🎯 Pedagogisk mål:</strong> ${meta.teacherGoal}</p>
+              <p><strong class="text-slate-900">📋 Innhold:</strong> ${meta.teacherDetails}</p>
+              <p class="reading-font text-[11px] bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-bold">
+                <strong class="text-slate-800">Eksempler:</strong> ${formatCase(meta.examples)}
+              </p>
+            </div>
+          </div>
+          <button onclick="selectGraphoStageFromModal(${meta.num})" class="btn-3d w-full ${
+            isCurrent ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+          } font-black py-2.5 px-4 rounded-2xl text-xs sm:text-sm">
+            ${isCurrent ? 'Fortsett Etappe ' + meta.num + ' ▶' : 'Start Etappe ' + meta.num + ' ▶'}
+          </button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectGraphoStageFromModal(stageNum) {
+      closeGraphoStageModal();
+      graphoCurrentStage = stageNum;
+      if (currentView !== 'grapho') {
+        showView('grapho');
+      } else {
+        startGraphoStage(stageNum);
+      }
+    }
+
+    function startGraphoStage(stageNum) {
+      graphoCurrentStage = stageNum;
+      graphoProgress = 0;
+      graphoAwaitingCorrection = false;
+      graphoLocked = false;
+
+      [1, 2, 3, 4].forEach(n => {
+        const btn = document.getElementById(`grapho-stage-${n}`);
+        if (btn) {
+          btn.className = (n === stageNum)
+            ? 'px-2.5 py-1 rounded-lg font-extrabold text-xs bg-indigo-600 text-white shadow-sm'
+            : 'px-2.5 py-1 rounded-lg font-extrabold text-xs text-slate-600 hover:bg-slate-200';
+        }
+      });
+
+      document.getElementById('grapho-round-complete').classList.add('hidden');
+      updateGraphoProgressUI();
+      nextGraphoTrial();
+    }
+
+    function updateGraphoProgressUI() {
+      const pct = Math.min(100, (graphoProgress / 10) * 100);
+      document.getElementById('grapho-progress-bar').style.width = `${pct}%`;
+      document.getElementById('grapho-progress-text').textContent = `${graphoProgress}/10`;
+    }
+
+    function nextGraphoTrial() {
+      graphoAwaitingCorrection = false;
+      graphoLocked = false;
+      const list = GRAPHO_STAGES[graphoCurrentStage] || GRAPHO_STAGES[1];
+      graphoCurrentItem = list[Math.floor(Math.random() * list.length)];
+
+      const pickedDistractors = shuffleArray(graphoCurrentItem.distractors).slice(0, 3);
+      graphoOptions = shuffleArray([
+        { label: graphoCurrentItem.target, isCorrect: true, state: 'normal' },
+        ...pickedDistractors.map(d => ({ label: d, isCorrect: false, state: 'normal' }))
+      ]);
+
+      const visualBox = document.getElementById('grapho-visual-box');
+      const speakerBtn = document.getElementById('grapho-speaker-btn');
+      const hintEl = document.getElementById('grapho-status-hint');
+
+      if (graphoCurrentStage === 1) {
+        // Etappe 1: Visuell førstebokstav ut fra bilde (ingen lyd ved start!)
+        visualBox.classList.remove('hidden');
+        visualBox.classList.add('flex');
+        speakerBtn.classList.add('hidden');
+
+        document.getElementById('grapho-visual-emoji').textContent = graphoCurrentItem.emoji;
+        const restOfWord = formatCase(graphoCurrentItem.fullWord.slice(1));
+        document.getElementById('grapho-visual-word-mask').textContent = `_ ${restOfWord.split('').join(' ')}`;
+
+        hintEl.textContent = '';
+        renderGraphoOptions();
+      } else {
+        // Etappe 2, 3 og 4: Ekte norske ord med talesyntese
+        visualBox.classList.add('hidden');
+        visualBox.classList.remove('flex');
+        speakerBtn.classList.remove('hidden');
+
+        hintEl.textContent = '';
+        renderGraphoOptions();
+        setTimeout(() => speakGraphoTarget(), 200);
+      }
+    }
+
+    function speakGraphoTarget() {
+      if (!graphoCurrentItem) return;
+      // På etappe 1 er oppgaven visuell uten lyd ved start
+      if (graphoCurrentStage === 1) return;
+
+      const btn = document.getElementById('grapho-speaker-btn');
+      if (btn) {
+        btn.classList.add('scale-110');
+        setTimeout(() => btn.classList.remove('scale-110'), 250);
+      }
+      speakText(graphoCurrentItem.spoken, 0.95);
+    }
+
+    function renderGraphoOptions() {
+      const grid = document.getElementById('grapho-options-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      // Finn lengste ord blant alternativene for å tilpasse rutenett og skriftstørrelse
+      const maxLen = Math.max(...graphoOptions.map(o => (o.label || '').length));
+
+      // For ord på 4+ bokstaver (Etappe 3 og 4) bruker vi et romslig 2x2-rutenett slik at lange ord som STJERNE aldri tyter utenfor
+      if (maxLen >= 4) {
+        grid.className = 'grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-3xl my-auto px-1';
+      } else {
+        grid.className = 'grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 w-full max-w-4xl my-auto px-1';
+      }
+
+      graphoOptions.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        const isSingleLetter = opt.label.length === 1;
+
+        let colorStyle = 'bg-white hover:bg-indigo-50 text-slate-900 border-indigo-300';
+        if (isSingleLetter) {
+          colorStyle = isNorwegianVowel(opt.label)
+            ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-400'
+            : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-400';
+        }
+
+        if (opt.state === 'wrong') {
+          colorStyle = 'bg-slate-800/60 text-slate-500 border-slate-700 opacity-40 pointer-events-none';
+        } else if (opt.state === 'highlight-correct') {
+          colorStyle = 'bg-amber-300 text-slate-950 border-white scale-105 ring-4 ring-amber-400 animate-bounce';
+        } else if (opt.state === 'success') {
+          colorStyle = 'bg-emerald-500 text-white border-white scale-105';
+        }
+
+        // Dynamisk tekststørrelse basert på ordlengde slik at alle ord får god plass inni boksen
+        let fontSizeClass = 'text-3xl sm:text-5xl py-6 sm:py-8';
+        if (opt.label.length >= 6) {
+          fontSizeClass = 'text-xl sm:text-3xl md:text-4xl py-5 sm:py-7';
+        } else if (opt.label.length >= 4) {
+          fontSizeClass = 'text-2xl sm:text-4xl py-5 sm:py-7';
+        }
+
+        btn.className = `tile-3d reading-font ${colorStyle} ${fontSizeClass} border-4 rounded-3xl px-3 sm:px-5 font-black flex items-center justify-center transition-all shadow-xl whitespace-nowrap overflow-hidden`;
+        btn.textContent = formatCase(opt.label);
+        btn.onclick = () => handleGraphoChoice(idx);
+        grid.appendChild(btn);
+      });
+    }
+
+    function handleGraphoChoice(idx) {
+      if (graphoLocked) return;
+      const chosen = graphoOptions[idx];
+      if (!chosen) return;
+
+      if (chosen.isCorrect) {
+        graphoLocked = true;
+        chosen.state = 'success';
+        playTone('success');
+        renderGraphoOptions();
+
+        // På Etappe 1 (Førstebokstav): Vis hele ordet i billedkortet og bekreft med å lese hele ordet høyt!
+        if (graphoCurrentStage === 1 && graphoCurrentItem.fullWord) {
+          document.getElementById('grapho-visual-word-mask').textContent = formatCase(graphoCurrentItem.fullWord);
+          speakText(graphoCurrentItem.spoken, 0.95);
+        }
+
+        // Hvis barnet fant den på første forsøk (ikke i korrigeringsmodus), gi poeng fremover
+        if (!graphoAwaitingCorrection) {
+          graphoProgress += 1;
+          updateGraphoProgressUI();
+        }
+
+        setTimeout(() => {
+          if (graphoProgress >= 10) {
+            state.stars += 2;
+            saveState();
+            fireConfetti();
+            document.getElementById('grapho-round-complete').classList.remove('hidden');
+          } else {
+            nextGraphoTrial();
+          }
+        }, 850);
+      } else {
+        // Når eleven trykker feil, demper vi de gale alternativene og lyser opp riktig svar
+        // slik at eleven må trykke på riktig brikke for å komme videre.
+        playTone('gentle_oops');
+        graphoAwaitingCorrection = true;
+        graphoOptions.forEach(o => {
+          o.state = o.isCorrect ? 'highlight-correct' : 'wrong';
+        });
+        document.getElementById('grapho-status-hint').textContent = '👆';
+        document.getElementById('grapho-status-hint').className = 'mt-2 text-xl font-black text-amber-300';
+        renderGraphoOptions();
+        if (graphoCurrentStage !== 1) {
+          setTimeout(() => speakGraphoTarget(), 250);
+        }
+      }
+    }
+
+    /* ==========================================================================
+       17. KONFETTI-MOTOR (Lettvekts HTML5 Canvas)
+       ========================================================================== */
+    let confettiParticles = [];
+    let confettiAnimId = null;
+
+    function fireConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#f43f5e', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899'];
+      for (let i = 0; i < 45; i++) {
+        confettiParticles.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 180,
+          y: canvas.height * 0.35,
+          vx: (Math.random() - 0.5) * 12,
+          vy: -Math.random() * 10 - 4,
+          size: 7 + Math.random() * 6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rot: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.25,
+          life: 65 + Math.random() * 25
+        });
+      }
+
+      if (!confettiAnimId) {
+        confettiLoop();
+      }
+    }
+
+    function confettiLoop() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = confettiParticles.length - 1; i >= 0; i--) {
+        const p = confettiParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.38;
+        p.rot += p.vRot;
+        p.life -= 1;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+        ctx.restore();
+
+        if (p.life <= 0 || p.y > canvas.height + 30) {
+          confettiParticles.splice(i, 1);
+        }
+      }
+
+      if (confettiParticles.length > 0) {
+        confettiAnimId = requestAnimationFrame(confettiLoop);
+      } else {
+        confettiAnimId = null;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    // Start appen når vinduet er lastet
+    window.onload = function () {
+      loadState();
+    };
+  </script>
+</body>
+</html>
